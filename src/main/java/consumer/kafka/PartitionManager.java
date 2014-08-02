@@ -39,7 +39,6 @@ public class PartitionManager implements Serializable {
 	ZkState _state;
 	String _topic;
 	Map _stateConf;
-	// IIndexer _indexer;
 	Long _lastFillTime = null;
 	int _fillFreqMs;
 	KafkaReceiver _receiver;
@@ -58,18 +57,6 @@ public class PartitionManager implements Serializable {
 		_topic = (String) _stateConf.get(Config.KAFKA_TOPIC);
 		_receiver = receiver;
 
-		/*
-		 * Constructor constructor; try {
-		 * 
-		 * constructor =
-		 * Class.forName((String)kafkaconfig._stateConf.get(Config.
-		 * TARGET_INDEXER_CLASS)).getConstructor(String.class);
-		 * 
-		 * _indexer = (IIndexer) constructor.newInstance(_topic);
-		 * 
-		 * } catch (Exception e) { // TODO Auto-generated catch block
-		 * e.printStackTrace(); }
-		 */
 
 		String consumerJsonId = null;
 		String tableName = null;
@@ -152,7 +139,7 @@ public class PartitionManager implements Serializable {
 
 		for (long key : _badMessages) {
 
-			// removing bad message. Good non-enqueued message can be re-tried
+			// removing bad message. message can be re-tried
 			// if needed
 			_waitingToEmit.remove(key);
 		}

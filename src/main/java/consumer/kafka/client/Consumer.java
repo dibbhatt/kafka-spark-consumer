@@ -102,7 +102,7 @@ public class Consumer implements Serializable {
 
 			final JavaReceiverInputDStream<String> inputStream = ssc
 					.receiverStream(new KafkaReceiver(_props, partionCount));
-			ssc.checkpoint("/home/spark-1.0.1-bin-hadoop1/work");
+			//ssc.checkpoint("/home/spark-1.0.1-bin-hadoop1/work");
 
 			inputStream
 					.foreachRDD(new Function2<JavaRDD<String>, Time, Void>() {
@@ -128,7 +128,7 @@ public class Consumer implements Serializable {
 
 							}
 
-							rdd.checkpoint();
+							//rdd.checkpoint();
 							return null;
 						}
 					});
