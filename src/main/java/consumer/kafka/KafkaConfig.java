@@ -33,11 +33,10 @@ public class KafkaConfig implements Serializable {
 		String kafkaTopic = props.getProperty("kafka.topic");
 		String brokerZkPath = props.getProperty("zookeeper.broker.path");
 		
-		String blurConsumerZkPath = props.getProperty("zookeeper.consumer.path");
-		String zkBlurConsumerConnection = props.getProperty("zookeeper.consumer.connection");
-		String blurConsumerId = props.getProperty("kafka.consumer.id");
-		String blurTableName = props.getProperty("target.table.name");
-		String blurIndexerClass = props.getProperty("target.indexer.class");
+		String consumerZkPath = props.getProperty("zookeeper.consumer.path");
+		String consumerConnection = props.getProperty("zookeeper.consumer.connection");
+		String consumerId = props.getProperty("kafka.consumer.id");
+		String decoderClass = props.getProperty("target.indexer.class");
 
 		_stateConf = new HashMap();
 		List<String> zkServers = new ArrayList<String>(Arrays.asList(zkHost
@@ -47,11 +46,10 @@ public class KafkaConfig implements Serializable {
 		_stateConf.put(Config.KAFKA_TOPIC, kafkaTopic);
 		_stateConf.put(Config.ZOOKEEPER_BROKER_PATH, brokerZkPath);
 
-		_stateConf.put(Config.ZOOKEEPER_CONSUMER_PATH, blurConsumerZkPath);
-		_stateConf.put(Config.ZOOKEEPER_CONSUMER_CONNECTION, zkBlurConsumerConnection);
-		_stateConf.put(Config.KAFKA_CONSUMER_ID, blurConsumerId);
-		_stateConf.put(Config.TARGET_TABLE_NAME, blurTableName);
-		_stateConf.put(Config.TARGET_INDEXER_CLASS, blurIndexerClass);
+		_stateConf.put(Config.ZOOKEEPER_CONSUMER_PATH, consumerZkPath);
+		_stateConf.put(Config.ZOOKEEPER_CONSUMER_CONNECTION, consumerConnection);
+		_stateConf.put(Config.KAFKA_CONSUMER_ID, consumerId);
+		_stateConf.put(Config.TARGET_INDEXER_CLASS, decoderClass);
 
 	}
 

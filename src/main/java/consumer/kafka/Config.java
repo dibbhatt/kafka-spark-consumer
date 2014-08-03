@@ -19,7 +19,6 @@ public class Config extends HashMap<String, Object>  implements Serializable{
 	public static final String ZOOKEEPER_CONSUMER_PATH = "zookeeper.consumer.path";
 	public static final String ZOOKEEPER_CONSUMER_CONNECTION = "zookeeper.consumer.connection";
 	public static final String KAFKA_CONSUMER_ID = "kafka.consumer.id";
-	public static final String TARGET_TABLE_NAME = "target.table.name";
 	public static final String TARGET_INDEXER_CLASS = "target.indexer.class";
 
 

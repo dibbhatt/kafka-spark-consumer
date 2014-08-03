@@ -48,7 +48,6 @@ zookeeper.port=2181
 # Kafka Broker path in ZK
 zookeeper.broker.path=/brokers
 #Kafka Topic to consume
-
 kafka.topic=topic-name
 
 #Consumer ZK Path. This will be used to store the consumed offset
@@ -56,17 +55,14 @@ zookeeper.consumer.connection=localhost:2182
 #ZK Path for storing Kafka Consumer offset
 zookeeper.consumer.path=/spark-kafka
 # Kafka Consumer ID. This ID will be used for accessing offset details in $zookeeper.consumer.path
-kafka.consumer.id=consumer-id
+kafka.consumer.id=12345
 # Target Message Processing Class. This must implements consumer.kafka.client.IIndexer
 target.indexer.class=com.pearson.hbase.RDDPProcessor
-
-#Target Table name . DO Not Edit This. this needs to be fixed
-target.table.name=spark-kafka
 
 
 Running Spark Kafka Consumer
 ===========================
-Let assume your RDD Message Processing logic (The implementation of consumer.kafka.client.IIndexer interface) is in custom-processor.jar which is built using the spark-kafka-consumer as dependency.
+Let assume your Kafka Message Processing logic (The implementation of consumer.kafka.client.IIndexer interface) is in custom-processor.jar which is built using the spark-kafka-consumer as dependency.
 
 Launch this using spark-submit
 

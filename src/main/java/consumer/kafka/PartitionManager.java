@@ -59,7 +59,6 @@ public class PartitionManager implements Serializable {
 
 
 		String consumerJsonId = null;
-		String tableName = null;
 		Long jsonOffset = null;
 		String path = committedPath();
 		try {
@@ -69,8 +68,6 @@ public class PartitionManager implements Serializable {
 			if (json != null) {
 				consumerJsonId = (String) ((Map<Object, Object>) json
 						.get("consumer")).get("id");
-				tableName = (String) ((Map<Object, Object>) json
-						.get("consumer")).get("table");
 				jsonOffset = (Long) json.get("offset");
 			}
 		} catch (Throwable e) {
@@ -82,7 +79,7 @@ public class PartitionManager implements Serializable {
 			_lastComittedOffset = KafkaUtils.getOffset(_consumer, _topic,
 					partiionId.partition, kafkaconfig);
 			LOG.info("No partition information found, using configuration to determine offset");
-		} else if (!_stateConf.get(Config.TARGET_TABLE_NAME).equals(tableName)
+		} else if (!_stateConf.get(Config.KAFKA_CONSUMER_ID).equals(consumerJsonId)
 				&& kafkaconfig._forceFromStart) {
 			_lastComittedOffset = KafkaUtils.getOffset(_consumer, _topic,
 					partiionId.partition, kafkaconfig._startOffsetTime);
@@ -230,9 +227,7 @@ public class PartitionManager implements Serializable {
 			Map<Object, Object> data = (Map<Object, Object>) ImmutableMap
 					.builder()
 					.put("consumer",
-							ImmutableMap.of("id", _ConsumerId, "table",
-									(String) _kafkaconfig._stateConf
-											.get(Config.TARGET_TABLE_NAME)))
+							ImmutableMap.of("id", _ConsumerId))
 					.put("offset", _lastEnquedOffset)
 					.put("partition", _partition.partition)
 					.put("broker",
