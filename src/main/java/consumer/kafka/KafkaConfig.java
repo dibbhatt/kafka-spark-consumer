@@ -20,13 +20,10 @@ public class KafkaConfig implements Serializable {
 	public long _startOffsetTime = kafka.api.OffsetRequest.EarliestTime();
 	public boolean _useStartOffsetTimeIfOffsetOutOfRange = true;
 
-	public long _stateUpdateIntervalMs = 10000;
+	public long _stateUpdateIntervalMs = 2000;
 	public Map _stateConf;
 
-	public KafkaConfig(Properties props) throws InstantiationException,
-			IllegalAccessException, ClassNotFoundException {
-
-		
+	public KafkaConfig(Properties props)  {
 		
 		String zkHost = props.getProperty("zookeeper.hosts");
 		String zkPort = props.getProperty("zookeeper.port");

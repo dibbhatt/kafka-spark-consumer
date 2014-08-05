@@ -98,11 +98,12 @@ public class Consumer implements Serializable {
 			SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver");
 
 			final JavaStreamingContext ssc = new JavaStreamingContext(
-					_sparkConf, new Duration(10000));
+					_sparkConf, new Duration(1000));
 
 			final JavaReceiverInputDStream<String> inputStream = ssc
 					.receiverStream(new KafkaReceiver(_props, partionCount));
 			//ssc.checkpoint("/home/spark-1.0.1-bin-hadoop1/work");
+			
 
 			inputStream
 					.foreachRDD(new Function2<JavaRDD<String>, Time, Void>() {
@@ -111,7 +112,7 @@ public class Consumer implements Serializable {
 								throws Exception {
 
 							for (String record : rdd.collect()) {
-
+								
 								if (record != null) {
 
 									try {
@@ -120,8 +121,8 @@ public class Consumer implements Serializable {
 
 									} catch (Exception ex) {
 
-										ex.printStackTrace();
-										LOG.error("Error During RDD Process....");
+										//ex.printStackTrace();
+										//LOG.error("Error During RDD Process....");
 									}
 
 								}

@@ -1,10 +1,8 @@
 package consumer.kafka;
 
 import java.io.Serializable;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.Map;
-import java.util.Set;
 
 import kafka.api.OffsetRequest;
 import kafka.javaapi.FetchResponse;
@@ -27,10 +25,7 @@ public class PartitionManager implements Serializable {
 	Long _emittedToOffset;
 	Long _lastComittedOffset;
 	Long _lastEnquedOffset;
-	int _capacity = 100;
-	Map<Long, Message> _waitingToEmit = new LinkedHashMap<Long, Message>(
-			_capacity);
-	Set<Long> _badMessages = new HashSet<Long>();
+	LinkedList<MessageAndOffset> _waitingToEmit = new LinkedList<MessageAndOffset>();
 	Partition _partition;
 	KafkaConfig _kafkaconfig;
 	String _ConsumerId;
@@ -39,8 +34,7 @@ public class PartitionManager implements Serializable {
 	ZkState _state;
 	String _topic;
 	Map _stateConf;
-	Long _lastFillTime = null;
-	int _fillFreqMs;
+	Long _lastCommitMs = 0l;
 	KafkaReceiver _receiver;
 
 	public PartitionManager(DynamicPartitionConnections connections,
@@ -53,7 +47,6 @@ public class PartitionManager implements Serializable {
 		_ConsumerId = (String) _stateConf.get(Config.KAFKA_CONSUMER_ID);
 		_consumer = connections.register(partiionId.host, partiionId.partition);
 		_state = state;
-		_fillFreqMs = 2 * 1000;
 		_topic = (String) _stateConf.get(Config.KAFKA_TOPIC);
 		_receiver = receiver;
 
@@ -104,58 +97,52 @@ public class PartitionManager implements Serializable {
 			fill();
 		}
 
-		for (Map.Entry<Long, Message> entry : _waitingToEmit.entrySet()) {
-			Long key = entry.getKey();
-			Message msg = entry.getValue();
-			if (msg != null) {
+		while (true) {
+			MessageAndOffset msgAndOffset = _waitingToEmit.pollFirst();
+			
+			if (msgAndOffset != null) {
+				
+				Long key = msgAndOffset.offset();
+				Message msg = msgAndOffset.message();
+
 
 				try {
 					_lastEnquedOffset = key;
 					if (_lastEnquedOffset > _lastComittedOffset) {
 
 						if (msg.payload() != null) {
-
-							 _receiver.store(new String(Utils.toByteArray(msg.payload())));
+							
+							synchronized (_receiver) {
+								 _receiver.store(new String(Utils.toByteArray(msg.payload())));
+							}
 							 LOG.info("Store for topic " + _topic + " for partition " + _partition.partition + " is : "+  _lastEnquedOffset);
 
-						} else {
-
-							_badMessages.add(key);
 						}
-
 					}
 				} catch (Exception e) {
 					LOG.info("Process Failed for offset " + key + " for  "
 							+ _partition + " for topic " + _topic
 							+ " with Exception" + e.getMessage());
 					e.printStackTrace();
-					_badMessages.add(key);
 				}
+			}else{
+				
+				break;
 			}
 		}
 
-		for (long key : _badMessages) {
-
-			// removing bad message. message can be re-tried
-			// if needed
-			_waitingToEmit.remove(key);
-		}
-		_badMessages.clear();
-		if ((_lastEnquedOffset > _lastComittedOffset)
-				&& !(_waitingToEmit.isEmpty())) {
+		long now = System.currentTimeMillis();
+		if ((_lastEnquedOffset > _lastComittedOffset) && ((now - _lastCommitMs) > _kafkaconfig._stateUpdateIntervalMs)) {
 			commit();
 			LOG.info("After commit , Waiting To Emit queue size is  "
 					+ _waitingToEmit.size());
-		} else {
-
-			_waitingToEmit.clear();
+			_lastCommitMs = System.currentTimeMillis();
 		}
 	}
 
 	private void fill() {
 
 		try {
-			// long start = System.nanoTime();
 			FetchResponse fetchResponse = KafkaUtils.fetchMessages(
 					_kafkaconfig, _consumer, _partition, _emittedToOffset);
 
@@ -201,7 +188,7 @@ public class PartitionManager implements Serializable {
 
 			for (MessageAndOffset msg : msgs) {
 				if (msg.message() != null) {
-					_waitingToEmit.put(msg.offset(), msg.message());
+					_waitingToEmit.add(msg);
 					_emittedToOffset = msg.nextOffset();
 				}
 			}

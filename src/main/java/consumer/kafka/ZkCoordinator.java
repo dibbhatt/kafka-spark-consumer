@@ -21,7 +21,7 @@ public class ZkCoordinator implements PartitionCoordinator,Serializable {
 	int _partitionOwner;
 	Map<Partition, PartitionManager> _managers = new HashMap();
 	List<PartitionManager> _cachedList;
-	Long _lastRefreshTime = null;
+	Long _lastRefreshTime = 0L;
 	int _refreshFreqMs;
 	DynamicPartitionConnections _connections;
 	DynamicBrokersReader _reader;
@@ -45,8 +45,7 @@ public class ZkCoordinator implements PartitionCoordinator,Serializable {
 
 	@Override
 	public List<PartitionManager> getMyManagedPartitions() {
-		if (_lastRefreshTime == null
-				|| (System.currentTimeMillis() - _lastRefreshTime) > _refreshFreqMs) {
+		if ((System.currentTimeMillis() - _lastRefreshTime) > _refreshFreqMs) {
 			refresh();
 			_lastRefreshTime = System.currentTimeMillis();
 		}

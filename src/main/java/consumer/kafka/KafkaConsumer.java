@@ -8,11 +8,10 @@ import org.slf4j.LoggerFactory;
 
 import consumer.kafka.client.KafkaReceiver;
 
-public class KafkaConsumer implements Serializable {
+public class KafkaConsumer implements Runnable,Serializable {
 
-	static enum EmitState {
-		EMITTED_MORE_LEFT, EMITTED_END, NO_EMITTED
-	}
+
+	private static final long serialVersionUID = 23459467644009223L;
 
 	public static final Logger LOG = LoggerFactory
 			.getLogger(KafkaConsumer.class);
@@ -40,6 +39,7 @@ public class KafkaConsumer implements Serializable {
 				new ZkBrokerReader(_kafkablurconfig, _state));
 		_coordinator = new ZkCoordinator(_connections, _kafkablurconfig,
 				_state, partitionId, _receiver);
+		
 	}
 
 	public void close() {
@@ -67,6 +67,36 @@ public class KafkaConsumer implements Serializable {
 	private void commit() {
 		_lastUpdateMs = System.currentTimeMillis();
 		_coordinator.getMyManagedPartitions().get(0).commit();
+	}
+
+	@Override
+	public void run() {
+		
+		try{
+			
+			while (!_receiver.isStopped()) {
+
+				this.createStream();
+
+			}
+			
+			// Restart in an attempt to connect again when server is active
+			// again
+			synchronized (_receiver) {
+				
+				_receiver.restart("Trying to connect again");
+
+			}
+			
+		}catch (Throwable t) {
+			
+			synchronized (_receiver) {
+				
+				_receiver.restart("Error receiving data", t);
+			}
+			
+		}
+
 	}
 
 }
