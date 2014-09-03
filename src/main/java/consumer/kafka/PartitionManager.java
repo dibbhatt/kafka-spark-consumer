@@ -108,13 +108,12 @@ public class PartitionManager implements Serializable {
 
 				try {
 					_lastEnquedOffset = key;
-					if (_lastEnquedOffset > _lastComittedOffset) {
+					if (_lastEnquedOffset >= _lastComittedOffset) {
 
 						if (msg.payload() != null) {
-							
-							synchronized (_receiver) {
-								 _receiver.store(new String(Utils.toByteArray(msg.payload())));
-							}
+														
+							_receiver.store(msg.payload());
+								 
 							 LOG.info("Store for topic " + _topic + " for partition " + _partition.partition + " is : "+  _lastEnquedOffset);
 
 						}

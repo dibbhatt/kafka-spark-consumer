@@ -1,8 +1,6 @@
 
 package consumer.kafka.client;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Properties;
 
 import org.apache.spark.storage.StorageLevel;
@@ -14,7 +12,7 @@ import consumer.kafka.KafkaConfig;
 import consumer.kafka.KafkaConsumer;
 import consumer.kafka.ZkState;
 
-public class KafkaReceiver extends Receiver<String> {
+public class KafkaReceiver extends Receiver {
 
 	/**
 	 * 
@@ -24,32 +22,50 @@ public class KafkaReceiver extends Receiver<String> {
 	public static final Logger LOG = LoggerFactory
 			.getLogger(KafkaReceiver.class);
 	private final Properties _props;
-	private int _partitionCount;
-	private List<KafkaConsumer> _consumer;
+	private int _partitionId;
 
-	public KafkaReceiver(Properties props, int partionCount) {
+	public KafkaReceiver(Properties props, int partitionId) {
 		super(StorageLevel.MEMORY_ONLY_SER());
 		this._props = props;
-		_partitionCount = partionCount;
+		_partitionId = partitionId;
 	}
 
 	public void onStart() {
 		// Start the thread that receives data over a connection
 		KafkaConfig kafkaConfig = new KafkaConfig(_props);
 		ZkState zkState = new ZkState(kafkaConfig);
-		_consumer = new ArrayList<KafkaConsumer>();
 		
 		LOG.info("***Staring Kafka Consumer***");
+					
+		KafkaConsumer kConsumer = new KafkaConsumer(kafkaConfig,zkState, this);
+		kConsumer.open(_partitionId);
+		createStream(kConsumer);
+
+	}
+
+	private void createStream(KafkaConsumer kConsumer) {
 		
-		for (int partitionId = 0; partitionId < _partitionCount; partitionId++) {
+		try{
 			
-			KafkaConsumer kConsumer = new KafkaConsumer(kafkaConfig,zkState, this);
-			kConsumer.open(partitionId);
-			_consumer.add(kConsumer);
-			Thread consumerThread = new Thread(kConsumer);
-			consumerThread.setDaemon(true);
-			consumerThread.start();
+			while (!isStopped()) {
+
+				kConsumer.createStream();
+
+			}
+			
+			// Restart in an attempt to connect again when server is active
+			// again
+				
+			restart("Trying to connect again");
+
+			
+		}catch (Throwable t) {
+			
+				
+			restart("Error receiving data", t);
+			
 		}
+		
 	}
 
 	public void onStop() {

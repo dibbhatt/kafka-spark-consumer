@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import consumer.kafka.client.KafkaReceiver;
 
-public class KafkaConsumer implements Runnable,Serializable {
+public class KafkaConsumer implements Serializable {
 
 
 	private static final long serialVersionUID = 23459467644009223L;
@@ -68,35 +68,4 @@ public class KafkaConsumer implements Runnable,Serializable {
 		_lastUpdateMs = System.currentTimeMillis();
 		_coordinator.getMyManagedPartitions().get(0).commit();
 	}
-
-	@Override
-	public void run() {
-		
-		try{
-			
-			while (!_receiver.isStopped()) {
-
-				this.createStream();
-
-			}
-			
-			// Restart in an attempt to connect again when server is active
-			// again
-			synchronized (_receiver) {
-				
-				_receiver.restart("Trying to connect again");
-
-			}
-			
-		}catch (Throwable t) {
-			
-			synchronized (_receiver) {
-				
-				_receiver.restart("Error receiving data", t);
-			}
-			
-		}
-
-	}
-
 }

@@ -4,6 +4,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import org.apache.commons.cli.CommandLine;
@@ -14,8 +17,10 @@ import org.apache.commons.cli.PosixParser;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.Duration;
 import org.apache.spark.streaming.Time;
+import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaReceiverInputDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
 import org.slf4j.Logger;
@@ -95,33 +100,43 @@ public class Consumer implements Serializable {
 					kafkaConfig, zkState);
 			int partionCount = kafkaBrokerReader.getNumPartitions();
 
-			SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver");
+			SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver").set("spark.streaming.blockInterval", "100");
 
 			final JavaStreamingContext ssc = new JavaStreamingContext(
-					_sparkConf, new Duration(1000));
-
-			final JavaReceiverInputDStream<String> inputStream = ssc
-					.receiverStream(new KafkaReceiver(_props, partionCount));
-			//ssc.checkpoint("/home/spark-1.0.1-bin-hadoop1/work");
+					_sparkConf, new Duration(500));
 			
+	        List<JavaDStream<ByteBuffer>> streamsList = new ArrayList<JavaDStream<ByteBuffer>>(partionCount);
+	        for (int i = 0; i < partionCount; i++) {
+	        	streamsList.add(ssc.receiverStream(new KafkaReceiver(_props, i)));
+	        }
 
-			inputStream
-					.foreachRDD(new Function2<JavaRDD<String>, Time, Void>() {
+	        /* Union all the streams if there is more than 1 stream */
+	        JavaDStream<ByteBuffer> unionStreams;
+	        if (streamsList.size() > 1) {
+	            unionStreams = ssc.union(streamsList.get(0), streamsList.subList(1, streamsList.size()));
+	        } else {
+	            /* Otherwise, just use the 1 stream */
+	            unionStreams = streamsList.get(0);
+	        }
+	        
+			
+	        unionStreams
+					.foreachRDD(new Function2<JavaRDD<ByteBuffer>, Time, Void>() {
 						@Override
-						public Void call(JavaRDD<String> rdd, Time time)
+						public Void call(JavaRDD<ByteBuffer> rdd, Time time)
 								throws Exception {
-
-							for (String record : rdd.collect()) {
+							
+							for (ByteBuffer record : rdd.collect()) {
 								
 								if (record != null) {
 
 									try {
 
-										_indexer.process(record.getBytes());
+										_indexer.process(record.array());
 
 									} catch (Exception ex) {
 
-										//ex.printStackTrace();
+										ex.printStackTrace();
 										//LOG.error("Error During RDD Process....");
 									}
 
