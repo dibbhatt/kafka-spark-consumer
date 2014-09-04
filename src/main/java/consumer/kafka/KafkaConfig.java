@@ -10,9 +10,9 @@ import java.util.Properties;
 
 public class KafkaConfig implements Serializable {
 
-	public int _fetchSizeBytes = 256 * 1024;
+	public int _fetchSizeBytes = 1024 * 1024;
 	public int _socketTimeoutMs = 10000;
-	public int _bufferSizeBytes = 256 * 1024;
+	public int _bufferSizeBytes = 1024 * 1024;
 
 	public int _refreshFreqSecs = 100;
 
