@@ -23,6 +23,7 @@ public class KafkaReceiver extends Receiver {
 			.getLogger(KafkaReceiver.class);
 	private final Properties _props;
 	private int _partitionId;
+	KafkaConsumer _kConsumer;
 
 	public KafkaReceiver(Properties props, int partitionId) {
 		super(StorageLevel.MEMORY_ONLY_SER());
@@ -34,42 +35,15 @@ public class KafkaReceiver extends Receiver {
 		// Start the thread that receives data over a connection
 		KafkaConfig kafkaConfig = new KafkaConfig(_props);
 		ZkState zkState = new ZkState(kafkaConfig);
-		
-		LOG.info("***Staring Kafka Consumer***");
-					
-		KafkaConsumer kConsumer = new KafkaConsumer(kafkaConfig,zkState, this);
-		kConsumer.open(_partitionId);
-		createStream(kConsumer);
+		_kConsumer = new KafkaConsumer(kafkaConfig,zkState, this);
+		_kConsumer.open(_partitionId);
+		Thread consumerThread = new Thread(_kConsumer);
+		consumerThread.start();
 
-	}
-
-	private void createStream(KafkaConsumer kConsumer) {
-		
-		try{
-			
-			while (!isStopped()) {
-
-				kConsumer.createStream();
-
-			}
-			
-			// Restart in an attempt to connect again when server is active
-			// again
-				
-			restart("Trying to connect again");
-
-			
-		}catch (Throwable t) {
-			
-				
-			restart("Error receiving data", t);
-			
-		}
-		
 	}
 
 	public void onStop() {
 
-		LOG.info("***Stopping Kafka Consumer***");
+		_kConsumer.close();
 	}
 }
