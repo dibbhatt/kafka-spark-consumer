@@ -44,6 +44,5 @@ public class KafkaReceiver extends Receiver {
 
 	public void onStop() {
 
-		_kConsumer.close();
 	}
 }
