@@ -112,7 +112,7 @@ public class PartitionManager implements Serializable {
 
 						if (msg.payload() != null) {
 														
-							_receiver.store(msg.payload());
+							_receiver.store(msg.payload().array());
 								 
 							 LOG.info("Store for topic " + _topic + " for partition " + _partition.partition + " is : "+  _lastEnquedOffset);
 

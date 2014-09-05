@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -17,11 +16,9 @@ import org.apache.commons.cli.PosixParser;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.Function2;
-import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.Duration;
 import org.apache.spark.streaming.Time;
 import org.apache.spark.streaming.api.java.JavaDStream;
-import org.apache.spark.streaming.api.java.JavaReceiverInputDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,13 +102,17 @@ public class Consumer implements Serializable {
 			final JavaStreamingContext ssc = new JavaStreamingContext(
 					_sparkConf, new Duration(500));
 			
-	        List<JavaDStream<ByteBuffer>> streamsList = new ArrayList<JavaDStream<ByteBuffer>>(partionCount);
+								
+	        List<JavaDStream<byte[]>> streamsList = new ArrayList<JavaDStream<byte[]>>(partionCount);
+	        
 	        for (int i = 0; i < partionCount; i++) {
+	        	
 	        	streamsList.add(ssc.receiverStream(new KafkaReceiver(_props, i)));
+	        	
 	        }
 
 	        /* Union all the streams if there is more than 1 stream */
-	        JavaDStream<ByteBuffer> unionStreams;
+	        JavaDStream<byte[]> unionStreams;
 	        if (streamsList.size() > 1) {
 	            unionStreams = ssc.union(streamsList.get(0), streamsList.subList(1, streamsList.size()));
 	        } else {
@@ -121,18 +122,18 @@ public class Consumer implements Serializable {
 	        
 			
 	        unionStreams
-					.foreachRDD(new Function2<JavaRDD<ByteBuffer>, Time, Void>() {
+					.foreachRDD(new Function2<JavaRDD<byte[]>, Time, Void>() {
 						@Override
-						public Void call(JavaRDD<ByteBuffer> rdd, Time time)
+						public Void call(JavaRDD<byte[]> rdd, Time time)
 								throws Exception {
 							
-							for (ByteBuffer record : rdd.collect()) {
+							for (byte[] record : rdd.collect()) {
 								
 								if (record != null) {
 
 									try {
 
-										_indexer.process(record.array());
+										_indexer.process(record);
 
 									} catch (Exception ex) {
 
