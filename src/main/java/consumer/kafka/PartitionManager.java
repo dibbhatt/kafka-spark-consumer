@@ -123,6 +123,7 @@ public class PartitionManager implements Serializable {
 							+ _partition + " for topic " + _topic
 							+ " with Exception" + e.getMessage());
 					e.printStackTrace();
+					break;
 				}
 			}else{
 				
@@ -130,12 +131,8 @@ public class PartitionManager implements Serializable {
 			}
 		}
 
-		long now = System.currentTimeMillis();
-		if ((_lastEnquedOffset > _lastComittedOffset) && ((now - _lastCommitMs) > _kafkaconfig._stateUpdateIntervalMs)) {
+		if ((_lastEnquedOffset > _lastComittedOffset) && (_waitingToEmit.isEmpty())) {
 			commit();
-			LOG.info("After commit , Waiting To Emit queue size is  "
-					+ _waitingToEmit.size());
-			_lastCommitMs = System.currentTimeMillis();
 		}
 	}
 

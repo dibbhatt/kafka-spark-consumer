@@ -23,7 +23,8 @@ public class KafkaReceiver extends Receiver {
 			.getLogger(KafkaReceiver.class);
 	private final Properties _props;
 	private int _partitionId;
-	KafkaConsumer _kConsumer;
+	private KafkaConsumer _kConsumer;
+	private Thread _consumerThread;
 
 	public KafkaReceiver(Properties props, int partitionId) {
 		super(StorageLevel.MEMORY_ONLY_SER());
@@ -37,12 +38,15 @@ public class KafkaReceiver extends Receiver {
 		ZkState zkState = new ZkState(kafkaConfig);
 		_kConsumer = new KafkaConsumer(kafkaConfig,zkState, this);
 		_kConsumer.open(_partitionId);
-		Thread consumerThread = new Thread(_kConsumer);
-		consumerThread.start();
+		_consumerThread = new Thread(_kConsumer);
+		_consumerThread.start();
 
 	}
 
 	public void onStop() {
+		
+		_consumerThread.interrupt();
+		_kConsumer.close();
 
 	}
 }

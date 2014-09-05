@@ -71,28 +71,13 @@ public class KafkaConsumer implements Runnable,Serializable {
 
 	@Override
 	public void run() {
+
 		
-		try{
-			
-			while (!_receiver.isStopped()) {
+		while (!_receiver.isStopped()) {
 
-				this.createStream();
+			this.createStream();
 
-			}
-			
-			// Restart in an attempt to connect again when server is active
-			// again
-				
-				_receiver.restart("Trying to connect again");
-
-			
-		}catch (Throwable t) {
-			
-				
-				_receiver.restart("Error receiving data", t);
-			
 		}
-
 	}
 
 }
