@@ -36,10 +36,11 @@ public class PartitionManager implements Serializable {
 	Map _stateConf;
 	Long _lastCommitMs = 0l;
 	KafkaReceiver _receiver;
+	boolean _restart;
 
 	public PartitionManager(DynamicPartitionConnections connections,
 			ZkState state, KafkaConfig kafkaconfig, Partition partiionId,
-			KafkaReceiver receiver) {
+			KafkaReceiver receiver,boolean restart) {
 		_partition = partiionId;
 		_connections = connections;
 		_kafkaconfig = kafkaconfig;
@@ -49,20 +50,37 @@ public class PartitionManager implements Serializable {
 		_state = state;
 		_topic = (String) _stateConf.get(Config.KAFKA_TOPIC);
 		_receiver = receiver;
-
-
+		_restart = restart;
+		
 		String consumerJsonId = null;
 		Long jsonOffset = null;
+		Long processOffset = null;
 		String path = committedPath();
+		String processPath = processedPath();
 		try {
 			Map<Object, Object> json = _state.readJSON(path);
 			LOG.info("Read partition information from: " + path + "  --> "
 					+ json);
+			
 			if (json != null) {
 				consumerJsonId = (String) ((Map<Object, Object>) json
 						.get("consumer")).get("id");
 				jsonOffset = (Long) json.get("offset");
 			}
+			
+			Map<Object, Object> pJson = _state.readJSON(processPath);
+			
+			if (pJson != null) {
+				String conId = (String) ((Map<Object, Object>) pJson
+						.get("consumer")).get("id");
+				
+				if(conId != null && conId.equalsIgnoreCase(consumerJsonId)){
+					
+					processOffset = (Long) pJson.get("offset");
+
+				}
+			}
+			
 		} catch (Throwable e) {
 			LOG.warn("Error reading and/or parsing at ZkNode: " + path, e);
 		}
@@ -78,7 +96,15 @@ public class PartitionManager implements Serializable {
 					partiionId.partition, kafkaconfig._startOffsetTime);
 			LOG.info("Topology change detected and reset from start forced, using configuration to determine offset");
 		} else {
-			_lastComittedOffset = jsonOffset;
+			
+			if(_restart && processOffset != null && processOffset < jsonOffset) {
+				
+				_lastComittedOffset = processOffset;
+			}else {
+				
+				_lastComittedOffset = jsonOffset;
+
+			}
 			LOG.info("Read last commit offset from zookeeper: "
 					+ _lastComittedOffset + "; old topology_id: "
 					+ consumerJsonId + " - new consumer_id: " + _ConsumerId);
@@ -111,8 +137,18 @@ public class PartitionManager implements Serializable {
 					if (_lastEnquedOffset >= _lastComittedOffset) {
 
 						if (msg.payload() != null) {
-														
-							_receiver.store(msg.payload().array());
+							
+							MessageAndMetadata mmeta = new MessageAndMetadata();
+							mmeta.setTopic(_topic);
+							mmeta.setConsumer(_ConsumerId);
+							mmeta.setOffset(_lastEnquedOffset);
+							mmeta.setPartition(_partition);
+							mmeta.setPayload(msg.payload().array());
+							
+							if(msg.hasKey())
+								mmeta.setKey(msg.key().array());
+							
+							_receiver.store(mmeta);
 								 
 							 LOG.info("Store for topic " + _topic + " for partition " + _partition.partition + " is : "+  _lastEnquedOffset);
 
@@ -245,6 +281,12 @@ public class PartitionManager implements Serializable {
 		return _stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH) + "/"
 				+ _stateConf.get(Config.KAFKA_CONSUMER_ID) + "/"
 				+ _stateConf.get(Config.KAFKA_TOPIC) + "/" + _partition.getId();
+	}
+	
+	public String processedPath() {
+		return _stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH) + "/"
+				+ _stateConf.get(Config.KAFKA_CONSUMER_ID) + "/"
+				+ _stateConf.get(Config.KAFKA_TOPIC) + "/processed/" + _partition.getId();
 	}
 
 	public long queryPartitionOffsetLatestTime() {

@@ -28,10 +28,11 @@ public class ZkCoordinator implements PartitionCoordinator,Serializable {
 	GlobalPartitionInformation _brokerInfo;
 	KafkaConfig _config;
 	KafkaReceiver _receiver;
+	boolean _restart;
 	
 
 	public ZkCoordinator(DynamicPartitionConnections connections,
-			KafkaConfig config, ZkState state, int partitionId, KafkaReceiver receiver) {
+			KafkaConfig config, ZkState state, int partitionId, KafkaReceiver receiver, boolean restart) {
 		_kafkaconfig = config;
 		_connections = connections;
 		_partitionOwner = partitionId;
@@ -40,6 +41,7 @@ public class ZkCoordinator implements PartitionCoordinator,Serializable {
 		_brokerInfo = _reader.getBrokerInfo();
 		_config = config;
 		_receiver = receiver;
+		_restart = restart;
 
 	}
 
@@ -49,6 +51,7 @@ public class ZkCoordinator implements PartitionCoordinator,Serializable {
 			refresh();
 			_lastRefreshTime = System.currentTimeMillis();
 		}
+		_restart = false;
 		return _cachedList;
 	}
 
@@ -83,7 +86,7 @@ public class ZkCoordinator implements PartitionCoordinator,Serializable {
 
 			for (Partition id : newPartitions) {
 
-				PartitionManager man = new PartitionManager(_connections,new ZkState((String)_config._stateConf.get(Config.ZOOKEEPER_CONSUMER_CONNECTION)), _kafkaconfig, id,_receiver);
+				PartitionManager man = new PartitionManager(_connections,new ZkState((String)_config._stateConf.get(Config.ZOOKEEPER_CONSUMER_CONNECTION)), _kafkaconfig, id,_receiver,_restart);
 				_managers.put(id, man);
 			}
 

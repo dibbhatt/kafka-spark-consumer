@@ -38,7 +38,7 @@ public class KafkaConsumer implements Runnable,Serializable {
 		_connections = new DynamicPartitionConnections(_kafkablurconfig,
 				new ZkBrokerReader(_kafkablurconfig, _state));
 		_coordinator = new ZkCoordinator(_connections, _kafkablurconfig,
-				_state, partitionId, _receiver);
+				_state, partitionId, _receiver,true);
 		
 	}
 
