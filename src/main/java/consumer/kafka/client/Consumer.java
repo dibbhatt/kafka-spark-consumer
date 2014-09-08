@@ -21,9 +21,6 @@ import org.apache.spark.streaming.Duration;
 import org.apache.spark.streaming.Time;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
-import org.apache.spark.streaming.api.java.JavaStreamingContextFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -33,17 +30,14 @@ import consumer.kafka.KafkaConfig;
 import consumer.kafka.MessageAndMetadata;
 import consumer.kafka.ZkState;
 
-public class Consumer implements Serializable {
+public class Consumer implements Serializable{
 
 
-	private static final long serialVersionUID = 4332618245650072140L;
-	
-	public static final Logger LOG = LoggerFactory.getLogger(Consumer.class);
+	private static final long serialVersionUID = 4332618245650072140L;	
 	private IIndexer _indexer;
 	private Properties _props;
 	private int _partitionCount ;
 	private KafkaConfig _kafkaConfig;
-	private ZkState _zkState = null;
 
 	public void start() throws InstantiationException, IllegalAccessException, ClassNotFoundException {
 		
@@ -65,9 +59,9 @@ public class Consumer implements Serializable {
 			return;
 		}
 
-		_zkState = new ZkState(_kafkaConfig);
+		ZkState zkState = new ZkState(_kafkaConfig);
 		DynamicBrokersReader kafkaBrokerReader = new DynamicBrokersReader(
-				_kafkaConfig, _zkState);
+				_kafkaConfig, zkState);
 		_partitionCount = kafkaBrokerReader.getNumPartitions();
 		
 		run();
@@ -103,104 +97,99 @@ public class Consumer implements Serializable {
 
 	}
 
-	private void run() throws InstantiationException, IllegalAccessException,
-			ClassNotFoundException {
+	private void run() {
 			
-			final String checkpointDirectory = "hdfs://10.252.5.113:9000/user/hadoop/spark";
+			String checkpointDirectory = "hdfs://10.252.5.113:9000/user/hadoop/spark";
 
-			// Create a factory object that can create a and setup a new JavaStreamingContext
-			JavaStreamingContextFactory contextFactory = new JavaStreamingContextFactory() {
-			  @Override public JavaStreamingContext create() {
-				  
-					SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver").set("spark.streaming.blockInterval", "200");
-					_sparkConf.set("spark.executor.extraClassPath", "/home/kafka-blur-client/lib/*");
-			        JavaDStream<MessageAndMetadata> unionStreams;
-			        List<JavaDStream<MessageAndMetadata>> streamsList = new ArrayList<JavaDStream<MessageAndMetadata>>(_partitionCount);
+			List<JavaDStream<MessageAndMetadata>> streamsList = new ArrayList<JavaDStream<MessageAndMetadata>>(_partitionCount);
+			JavaDStream<MessageAndMetadata> unionStreams;
+			
+			SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver").set("spark.streaming.blockInterval", "200");
+			_sparkConf.set("spark.executor.extraClassPath", "/home/kafka-blur-client/lib/*");
 
-					JavaStreamingContext ssc = new JavaStreamingContext(
-							_sparkConf, new Duration(2000));
-			        // set checkpoint directory
-			        //ssc.checkpoint(checkpointDirectory); 
-			        
-			        for (int i = 0; i < _partitionCount; i++) {
-			        	
-			        	streamsList.add(ssc.receiverStream(new KafkaReceiver(_props, i)));
-			        	
-			        }
-			        
-			        /* Union all the streams if there is more than 1 stream */
-			        if (streamsList.size() > 1) {
-			            unionStreams = ssc.union(streamsList.get(0), streamsList.subList(1, streamsList.size()));
-			        } else {
-			            /* Otherwise, just use the 1 stream */
-			            unionStreams = streamsList.get(0);
-			        }
-			        	        
-			        //JavaDStream<MessageAndMetadata> repartitionStream = unionStreams.repartition(50);
-			        //repartitionStream.checkpoint(new Duration(6000));
-					final ZkState zkState = new ZkState((String)_kafkaConfig._stateConf.get(Config.ZOOKEEPER_CONSUMER_CONNECTION));
 
-					
-					unionStreams
-							.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
+			JavaStreamingContext ssc = new JavaStreamingContext(
+					_sparkConf, new Duration(2000));
+	        // set checkpoint directory
+	        
+	        for (int i = 0; i < _partitionCount; i++) {
+	        	
+	        	JavaDStream<MessageAndMetadata> rStream = ssc.receiverStream(new KafkaReceiver(_props, i));
+	        	streamsList.add(rStream);
+	        	
+	        }
+	        
+	         //Union all the streams if there is more than 1 stream 
+	        if (streamsList.size() > 1) {
+	            unionStreams = ssc.union(streamsList.get(0), streamsList.subList(1, streamsList.size()));
+	        } else {
+	         //Otherwise, just use the 1 stream 
+	            unionStreams = streamsList.get(0);
+	        }
+	        	        
+			final ZkState zkState = new ZkState((String)_kafkaConfig._stateConf.get(Config.ZOOKEEPER_CONSUMER_CONNECTION));
+
+
+	        unionStreams
+					.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>()  {
+
+						long lastRefreshTime = 0L;
+
+						@Override
+						public Void call(JavaRDD<MessageAndMetadata> rdd, Time time)
+								throws Exception {
+																
+							for (MessageAndMetadata record : rdd.collect()) {
 								
+								if (record != null) {
 
-								@Override
-								public Void call(JavaRDD<MessageAndMetadata> rdd, Time time)
-										throws Exception {
-									
-									long lastRefreshTime = 0L;
-									
-									for (MessageAndMetadata record : rdd.collect()) {
+									try {
+
+										_indexer.process(record.getPayload());
+										ack(record,zkState);
 										
-										if (record != null) {
+									} catch (Exception ex) {
 
-											try {
+										ex.printStackTrace();
+										//LOG.error("Error During RDD Process....");
+									}
 
-												_indexer.process(record.getPayload());
-												
-												if ((System.currentTimeMillis() - lastRefreshTime) > 2000) {
-													
-													Map<Object, Object> metadata = (Map<Object, Object>) ImmutableMap
-															.builder()
-															.put("consumer",
-																	ImmutableMap.of("id", record.getConsumer()))
-															.put("offset", record.getOffset())
-															.put("partition", record.getPartition().partition)
-															.put("topic", record.getTopic()).build();
-													
-													String path = committedPath() + record.getPartition().getId();
-													zkState.writeJSON(path, metadata);
-													lastRefreshTime = System.currentTimeMillis();
-												}
-												
-											} catch (Exception ex) {
-
-												ex.printStackTrace();
-												//LOG.error("Error During RDD Process....");
-											}
-
-										}
-
-									}	
-										return null;
 								}
-								
-								public String committedPath() {
-									return _kafkaConfig._stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH) + "/"
-											+ _kafkaConfig._stateConf.get(Config.KAFKA_CONSUMER_ID) + "/"
-											+ _kafkaConfig._stateConf.get(Config.KAFKA_TOPIC) + "/processed/";
-								}
-							});	
-			        
-			    return ssc;
-			  }
-			};
-			
+
+							}	
+							return null;
+						}
+						
+						public String committedPath() {
+							return _kafkaConfig._stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH) + "/"
+									+ _kafkaConfig._stateConf.get(Config.KAFKA_CONSUMER_ID) + "/"
+									+ _kafkaConfig._stateConf.get(Config.KAFKA_TOPIC) + "/processed/";
+						}
+						
+						public void ack(MessageAndMetadata record,ZkState zkState){
 							
-			JavaStreamingContext context = JavaStreamingContext.getOrCreate(checkpointDirectory, contextFactory);
-			context.start();
-	        context.awaitTermination();
+							
+							if ((System.currentTimeMillis() - lastRefreshTime) > 2000) {
+								
+								Map<Object, Object> metadata = (Map<Object, Object>) ImmutableMap
+										.builder()
+										.put("consumer",
+												ImmutableMap.of("id", record.getConsumer()))
+										.put("offset", record.getOffset())
+										.put("partition", record.getPartition().partition)
+										.put("topic", record.getTopic()).build();
+								
+								String path = committedPath() + record.getPartition().getId();										
+								zkState.writeJSON(path, metadata);
+								lastRefreshTime = System.currentTimeMillis();
+							}
+							
+						}
+					});	
+		
+	        ssc.checkpoint(checkpointDirectory); 
+			ssc.start();
+	        ssc.awaitTermination();
 	}
 
 	public static void main(String[] args) throws Exception {
