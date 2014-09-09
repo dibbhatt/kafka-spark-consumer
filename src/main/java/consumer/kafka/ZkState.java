@@ -14,7 +14,7 @@ import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.retry.RetryNTimes;
 
-public class ZkState implements Serializable{
+public class ZkState implements Serializable {
 	public static final Logger LOG = LoggerFactory.getLogger(ZkState.class);
 	transient CuratorFramework _curator;
 
@@ -46,12 +46,12 @@ public class ZkState implements Serializable{
 			throw new RuntimeException(e);
 		}
 	}
-	
-	public ZkState(String  connectionStr) {
+
+	public ZkState(String connectionStr) {
 
 		try {
-			_curator = CuratorFrameworkFactory.newClient(connectionStr, 120000, 120000,
-					new RetryNTimes(5, 1000));
+			_curator = CuratorFrameworkFactory.newClient(connectionStr, 120000,
+					120000, new RetryNTimes(5, 1000));
 			LOG.info("Starting curator service");
 			_curator.start();
 		} catch (Exception e) {

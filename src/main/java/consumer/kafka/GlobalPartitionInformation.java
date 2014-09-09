@@ -9,7 +9,6 @@ import java.util.TreeMap;
 
 import com.google.common.base.Objects;
 
-
 public class GlobalPartitionInformation implements Iterable<Partition>,
 		Serializable {
 

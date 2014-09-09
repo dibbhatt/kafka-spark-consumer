@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import consumer.kafka.client.KafkaReceiver;
 
-public class ZkCoordinator implements PartitionCoordinator,Serializable {
+public class ZkCoordinator implements PartitionCoordinator, Serializable {
 	public static final Logger LOG = LoggerFactory
 			.getLogger(ZkCoordinator.class);
 
@@ -29,15 +29,15 @@ public class ZkCoordinator implements PartitionCoordinator,Serializable {
 	KafkaConfig _config;
 	KafkaReceiver _receiver;
 	boolean _restart;
-	
 
 	public ZkCoordinator(DynamicPartitionConnections connections,
-			KafkaConfig config, ZkState state, int partitionId, KafkaReceiver receiver, boolean restart) {
+			KafkaConfig config, ZkState state, int partitionId,
+			KafkaReceiver receiver, boolean restart) {
 		_kafkaconfig = config;
 		_connections = connections;
 		_partitionOwner = partitionId;
 		_refreshFreqMs = config._refreshFreqSecs * 1000;
-		_reader = new DynamicBrokersReader(_kafkaconfig,state);
+		_reader = new DynamicBrokersReader(_kafkaconfig, state);
 		_brokerInfo = _reader.getBrokerInfo();
 		_config = config;
 		_receiver = receiver;
@@ -86,7 +86,10 @@ public class ZkCoordinator implements PartitionCoordinator,Serializable {
 
 			for (Partition id : newPartitions) {
 
-				PartitionManager man = new PartitionManager(_connections,new ZkState((String)_config._stateConf.get(Config.ZOOKEEPER_CONSUMER_CONNECTION)), _kafkaconfig, id,_receiver,_restart);
+				PartitionManager man = new PartitionManager(_connections,
+						new ZkState((String) _config._stateConf
+								.get(Config.ZOOKEEPER_CONSUMER_CONNECTION)),
+						_kafkaconfig, id, _receiver, _restart);
 				_managers.put(id, man);
 			}
 

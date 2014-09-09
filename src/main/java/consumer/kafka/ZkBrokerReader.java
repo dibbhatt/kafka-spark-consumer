@@ -5,7 +5,7 @@ import java.io.Serializable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ZkBrokerReader implements IBrokerReader,Serializable{
+public class ZkBrokerReader implements IBrokerReader, Serializable {
 
 	public static final Logger LOG = LoggerFactory
 			.getLogger(ZkBrokerReader.class);
@@ -17,7 +17,7 @@ public class ZkBrokerReader implements IBrokerReader,Serializable{
 	long refreshMillis;
 
 	public ZkBrokerReader(KafkaConfig config, ZkState zkState) {
-		_reader = new DynamicBrokersReader(config,zkState);
+		_reader = new DynamicBrokersReader(config, zkState);
 		_cachedBrokers = _reader.getBrokerInfo();
 		_lastRefreshTimeMs = System.currentTimeMillis();
 		refreshMillis = config._refreshFreqSecs * 1000L;

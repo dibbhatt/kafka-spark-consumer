@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import com.netflix.curator.framework.CuratorFramework;
 
-public class DynamicBrokersReader implements Serializable{
+public class DynamicBrokersReader implements Serializable {
 
 	public static final Logger LOG = LoggerFactory
 			.getLogger(DynamicBrokersReader.class);
@@ -20,8 +20,7 @@ public class DynamicBrokersReader implements Serializable{
 	private String _zkPath;
 	private String _topic;
 
-	
-	public DynamicBrokersReader(KafkaConfig config,ZkState zkState) {
+	public DynamicBrokersReader(KafkaConfig config, ZkState zkState) {
 		_zkPath = (String) config._stateConf.get(Config.ZOOKEEPER_BROKER_PATH);
 		_topic = (String) config._stateConf.get(Config.KAFKA_TOPIC);
 		_curator = zkState.getCurator();

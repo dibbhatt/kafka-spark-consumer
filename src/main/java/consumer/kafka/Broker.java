@@ -4,6 +4,8 @@ import java.io.Serializable;
 import com.google.common.base.Objects;
 
 public class Broker implements Serializable, Comparable<Broker> {
+
+	private static final long serialVersionUID = 7765453245650072140L;
 	public final String host;
 	public final int port;
 

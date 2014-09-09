@@ -4,8 +4,9 @@ import java.io.Serializable;
 
 import com.google.common.base.Objects;
 
-public class Partition implements Serializable{
+public class Partition implements Serializable {
 
+	private static final long serialVersionUID = 2374953245650072140L;
 	public final Broker host;
 	public final int partition;
 

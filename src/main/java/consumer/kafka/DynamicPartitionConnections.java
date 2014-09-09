@@ -11,12 +11,12 @@ import kafka.javaapi.consumer.SimpleConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DynamicPartitionConnections implements Serializable{
+public class DynamicPartitionConnections implements Serializable {
 
 	public static final Logger LOG = LoggerFactory
 			.getLogger(DynamicPartitionConnections.class);
 
-	class ConnectionInfo implements Serializable{
+	class ConnectionInfo implements Serializable {
 		SimpleConsumer consumer;
 		Set<Integer> partitions = new HashSet();
 

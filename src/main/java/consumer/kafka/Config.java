@@ -3,7 +3,7 @@ package consumer.kafka;
 import java.io.Serializable;
 import java.util.HashMap;
 
-public class Config extends HashMap<String, Object>  implements Serializable{
+public class Config extends HashMap<String, Object> implements Serializable {
 
 	/**
 	 * Kafka related configurations
@@ -20,7 +20,5 @@ public class Config extends HashMap<String, Object>  implements Serializable{
 	public static final String ZOOKEEPER_CONSUMER_CONNECTION = "zookeeper.consumer.connection";
 	public static final String KAFKA_CONSUMER_ID = "kafka.consumer.id";
 	public static final String TARGET_INDEXER_CLASS = "target.indexer.class";
-
-
 
 }

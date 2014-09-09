@@ -23,15 +23,16 @@ public class KafkaConfig implements Serializable {
 	public long _stateUpdateIntervalMs = 2000;
 	public Map _stateConf;
 
-	public KafkaConfig(Properties props)  {
-		
+	public KafkaConfig(Properties props) {
+
 		String zkHost = props.getProperty("zookeeper.hosts");
 		String zkPort = props.getProperty("zookeeper.port");
 		String kafkaTopic = props.getProperty("kafka.topic");
 		String brokerZkPath = props.getProperty("zookeeper.broker.path");
-		
+
 		String consumerZkPath = props.getProperty("zookeeper.consumer.path");
-		String consumerConnection = props.getProperty("zookeeper.consumer.connection");
+		String consumerConnection = props
+				.getProperty("zookeeper.consumer.connection");
 		String consumerId = props.getProperty("kafka.consumer.id");
 		String decoderClass = props.getProperty("target.indexer.class");
 
@@ -44,7 +45,8 @@ public class KafkaConfig implements Serializable {
 		_stateConf.put(Config.ZOOKEEPER_BROKER_PATH, brokerZkPath);
 
 		_stateConf.put(Config.ZOOKEEPER_CONSUMER_PATH, consumerZkPath);
-		_stateConf.put(Config.ZOOKEEPER_CONSUMER_CONNECTION, consumerConnection);
+		_stateConf
+				.put(Config.ZOOKEEPER_CONSUMER_CONNECTION, consumerConnection);
 		_stateConf.put(Config.KAFKA_CONSUMER_ID, consumerId);
 		_stateConf.put(Config.TARGET_INDEXER_CLASS, decoderClass);
 

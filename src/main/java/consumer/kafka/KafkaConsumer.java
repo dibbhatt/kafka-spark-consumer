@@ -8,10 +8,9 @@ import org.slf4j.LoggerFactory;
 
 import consumer.kafka.client.KafkaReceiver;
 
-public class KafkaConsumer implements Runnable,Serializable {
+public class KafkaConsumer implements Runnable, Serializable {
 
-
-	private static final long serialVersionUID = 23459467644009223L;
+	private static final long serialVersionUID = 1780042755212645597L;
 
 	public static final Logger LOG = LoggerFactory
 			.getLogger(KafkaConsumer.class);
@@ -38,8 +37,8 @@ public class KafkaConsumer implements Runnable,Serializable {
 		_connections = new DynamicPartitionConnections(_kafkablurconfig,
 				new ZkBrokerReader(_kafkablurconfig, _state));
 		_coordinator = new ZkCoordinator(_connections, _kafkablurconfig,
-				_state, partitionId, _receiver,true);
-		
+				_state, partitionId, _receiver, true);
+
 	}
 
 	public void close() {
@@ -72,7 +71,6 @@ public class KafkaConsumer implements Runnable,Serializable {
 	@Override
 	public void run() {
 
-		
 		while (!_receiver.isStopped()) {
 
 			this.createStream();

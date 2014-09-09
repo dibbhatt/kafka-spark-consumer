@@ -1,7 +1,5 @@
-
 package consumer.kafka.client;
 
-import java.io.Serializable;
 import java.util.Properties;
 
 import org.apache.spark.storage.StorageLevel;
@@ -11,13 +9,12 @@ import consumer.kafka.KafkaConfig;
 import consumer.kafka.KafkaConsumer;
 import consumer.kafka.ZkState;
 
-public class KafkaReceiver extends Receiver implements Serializable{
+public class KafkaReceiver extends Receiver {
 
-
-	private static final long serialVersionUID = 7978924537344009223L;
+	private static final long serialVersionUID = -4927707326026616451L;
 	private final Properties _props;
 	private int _partitionId;
-	private KafkaConsumer _kConsumer;
+	private transient KafkaConsumer _kConsumer;
 
 	public KafkaReceiver(Properties props, int partitionId) {
 		super(StorageLevel.MEMORY_ONLY_SER());
@@ -29,7 +26,7 @@ public class KafkaReceiver extends Receiver implements Serializable{
 		// Start the thread that receives data over a connection
 		KafkaConfig kafkaConfig = new KafkaConfig(_props);
 		ZkState zkState = new ZkState(kafkaConfig);
-		_kConsumer = new KafkaConsumer(kafkaConfig,zkState, this);
+		_kConsumer = new KafkaConsumer(kafkaConfig, zkState, this);
 		_kConsumer.open(_partitionId);
 		Thread _consumerThread = new Thread(_kConsumer);
 		_consumerThread.start();
@@ -37,7 +34,7 @@ public class KafkaReceiver extends Receiver implements Serializable{
 	}
 
 	public void onStop() {
-		
+
 		_kConsumer.close();
 
 	}
