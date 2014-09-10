@@ -37,6 +37,8 @@ public class PartitionManager implements Serializable {
 	Long _lastCommitMs = 0l;
 	KafkaReceiver _receiver;
 	boolean _restart;
+	Long _lastFillTime = null;
+	int _fillFreqMs;
 
 	public PartitionManager(DynamicPartitionConnections connections,
 			ZkState state, KafkaConfig kafkaconfig, Partition partiionId,
@@ -51,6 +53,7 @@ public class PartitionManager implements Serializable {
 		_topic = (String) _stateConf.get(Config.KAFKA_TOPIC);
 		_receiver = receiver;
 		_restart = restart;
+		_fillFreqMs = 5 * 100;
 
 		String consumerJsonId = null;
 		Long jsonOffset = null;
@@ -121,7 +124,12 @@ public class PartitionManager implements Serializable {
 	public void next() {
 		if (_waitingToEmit.isEmpty()) {
 
-			fill();
+			if (_lastFillTime == null
+					|| (System.currentTimeMillis() - _lastFillTime) > _fillFreqMs) {
+				LOG.info("_waitingToEmit is empty for topic " + _topic + " for partition " + _partition.partition + ".. Filling it every 500 Mili Seconds");
+				fill();
+				_lastFillTime = System.currentTimeMillis();
+			}
 		}
 
 		while (true) {
