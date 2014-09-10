@@ -157,11 +157,13 @@ public class PartitionManager implements Serializable {
 						}
 					}
 				} catch (Exception e) {
-					LOG.info("Process Failed for offset " + key + " for  "
+					LOG.error("Process Failed for offset " + key + " for  "
 							+ _partition + " for topic " + _topic
 							+ " with Exception" + e.getMessage());
 					e.printStackTrace();
-					break;
+					throw new RuntimeException("Process Failed for offset " + key + " for  "
+							+ _partition + " for topic " + _topic
+							+ " with Exception" + e.getMessage());
 				}
 			} else {
 

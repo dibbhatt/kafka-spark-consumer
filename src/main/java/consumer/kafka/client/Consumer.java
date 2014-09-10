@@ -193,6 +193,7 @@ public class Consumer implements Serializable {
 					}
 				});
 
+		
 		ssc.checkpoint(checkpointDirectory);
 		ssc.start();
 		ssc.awaitTermination();

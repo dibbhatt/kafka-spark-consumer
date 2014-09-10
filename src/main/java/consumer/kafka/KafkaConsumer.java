@@ -50,11 +50,14 @@ public class KafkaConsumer implements Runnable, Serializable {
 			List<PartitionManager> managers = _coordinator
 					.getMyManagedPartitions();
 			managers.get(0).next();
-		} catch (Exception error) {
+		} catch (Exception ex) {
 			LOG.error("Partition " + _currPartitionIndex
-					+ " encountered error during doIndex : "
-					+ error.getMessage());
-			error.printStackTrace();
+					+ " encountered error during createStream : "
+					+ ex.getMessage());
+			ex.printStackTrace();
+			throw new RuntimeException("Partition " + _currPartitionIndex
+					+ " encountered error during createStream : "
+					+ ex.getMessage());
 		}
 
 	}
@@ -70,12 +73,23 @@ public class KafkaConsumer implements Runnable, Serializable {
 
 	@Override
 	public void run() {
+		
+		try{
+			
+			while (!_receiver.isStopped()) {
 
-		while (!_receiver.isStopped()) {
-
-			this.createStream();
-
+				this.createStream();
+			}
+			
+		}catch(Throwable  t){
+			
+			LOG.error("Error during Receiver Run " + t.getMessage() + " trying to restart");
+			t.printStackTrace();
+			_receiver.restart("Trying to connect Receiver for Partition " + _currPartitionIndex);
+			
 		}
+
+
 	}
 
 }
