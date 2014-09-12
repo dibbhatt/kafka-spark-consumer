@@ -53,7 +53,7 @@ public class PartitionManager implements Serializable {
 		_topic = (String) _stateConf.get(Config.KAFKA_TOPIC);
 		_receiver = receiver;
 		_restart = restart;
-		_fillFreqMs = 5 * 100;
+		_fillFreqMs = 500;
 
 		String consumerJsonId = null;
 		Long jsonOffset = null;
@@ -151,7 +151,9 @@ public class PartitionManager implements Serializable {
 							mmeta.setConsumer(_ConsumerId);
 							mmeta.setOffset(_lastEnquedOffset);
 							mmeta.setPartition(_partition);
-							mmeta.setPayload(msg.payload().array());
+							byte[] payload = new byte[msg.payload().remaining()];						
+							msg.payload().get(payload);
+							mmeta.setPayload(payload);
 
 							if (msg.hasKey())
 								mmeta.setKey(msg.key().array());

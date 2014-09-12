@@ -25,7 +25,6 @@ import org.apache.spark.streaming.api.java.JavaStreamingContext;
 import com.google.common.collect.ImmutableMap;
 
 import consumer.kafka.Config;
-import consumer.kafka.DynamicBrokersReader;
 import consumer.kafka.KafkaConfig;
 import consumer.kafka.MessageAndMetadata;
 import consumer.kafka.ZkState;
@@ -33,35 +32,13 @@ import consumer.kafka.ZkState;
 public class Consumer implements Serializable {
 
 	private static final long serialVersionUID = 4332618245650072140L;
-	private IIndexer _indexer;
 	private Properties _props;
-	private int _partitionCount;
 	private KafkaConfig _kafkaConfig;
 
 	public void start() throws InstantiationException, IllegalAccessException,
 			ClassNotFoundException {
 
 		_kafkaConfig = new KafkaConfig(_props);
-		Constructor constructor;
-		try {
-
-			constructor = Class.forName(
-					(String) _kafkaConfig._stateConf
-							.get(Config.TARGET_INDEXER_CLASS)).getConstructor();
-
-			_indexer = (IIndexer) constructor.newInstance();
-
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return;
-		}
-
-		ZkState zkState = new ZkState(_kafkaConfig);
-		DynamicBrokersReader kafkaBrokerReader = new DynamicBrokersReader(
-				_kafkaConfig, zkState);
-		_partitionCount = kafkaBrokerReader.getNumPartitions();
-
 		run();
 	}
 
@@ -97,6 +74,7 @@ public class Consumer implements Serializable {
 	private void run() {
 
 		String checkpointDirectory = "hdfs://10.252.5.113:9000/user/hadoop/spark";
+		int _partitionCount = 3;
 
 		List<JavaDStream<MessageAndMetadata>> streamsList = new ArrayList<JavaDStream<MessageAndMetadata>>(
 				_partitionCount);
@@ -106,13 +84,11 @@ public class Consumer implements Serializable {
 				"spark.streaming.blockInterval", "200");
 
 		JavaStreamingContext ssc = new JavaStreamingContext(_sparkConf,
-				new Duration(2000));
+				new Duration(10000));
 
 		for (int i = 0; i < _partitionCount; i++) {
 
-			JavaDStream<MessageAndMetadata> rStream = ssc
-					.receiverStream(new KafkaReceiver(_props, i));
-			streamsList.add(rStream);
+			streamsList.add(ssc.receiverStream(new KafkaReceiver(_props, i)));
 
 		}
 
@@ -125,75 +101,88 @@ public class Consumer implements Serializable {
 			unionStreams = streamsList.get(0);
 		}
 
-		unionStreams
-				.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
+		unionStreams.checkpoint(new Duration(10000));
 
-					long lastRefreshTime = 0L;
-					ZkState zkState = new ZkState(
-							(String) _kafkaConfig._stateConf
-									.get(Config.ZOOKEEPER_CONSUMER_CONNECTION));
+		try {
+			unionStreams
+					.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
 
-					@Override
-					public Void call(JavaRDD<MessageAndMetadata> rdd, Time time)
-							throws Exception {
+						long lastRefreshTime = 0L;
+						ZkState zkState = new ZkState(
+								(String) _kafkaConfig._stateConf
+										.get(Config.ZOOKEEPER_CONSUMER_CONNECTION));
+						transient Constructor constructor = Class.forName(
+								(String) _kafkaConfig._stateConf
+										.get(Config.TARGET_INDEXER_CLASS))
+								.getConstructor(String.class);
+						transient IIndexer indexer = (IIndexer) constructor
+								.newInstance(_props.getProperty("kafka.topic"));
 
-						for (MessageAndMetadata record : rdd.collect()) {
+						@Override
+						public Void call(JavaRDD<MessageAndMetadata> rdd,
+								Time time) throws Exception {
 
-							if (record != null) {
+							for (MessageAndMetadata record : rdd.collect()) {
 
-								try {
+								if (record != null) {
 
-									_indexer.process(record.getPayload());
-									ack(record, zkState);
+									try {
 
-								} catch (Exception ex) {
+										indexer.process(record.getPayload());
+										ack(record, zkState);
 
-									ex.printStackTrace();
-									// LOG.error("Error During RDD Process....");
+									} catch (Exception ex) {
+
+										ex.printStackTrace();
+									}
+
 								}
 
 							}
-
-						}
-						return null;
-					}
-
-					public String committedPath() {
-						return _kafkaConfig._stateConf
-								.get(Config.ZOOKEEPER_CONSUMER_PATH)
-								+ "/"
-								+ _kafkaConfig._stateConf
-										.get(Config.KAFKA_CONSUMER_ID)
-								+ "/"
-								+ _kafkaConfig._stateConf
-										.get(Config.KAFKA_TOPIC)
-								+ "/processed/";
-					}
-
-					public void ack(MessageAndMetadata record, ZkState zkState) {
-
-						if ((System.currentTimeMillis() - lastRefreshTime) > 2000) {
-
-							Map<Object, Object> metadata = (Map<Object, Object>) ImmutableMap
-									.builder()
-									.put("consumer",
-											ImmutableMap.of("id",
-													record.getConsumer()))
-									.put("offset", record.getOffset())
-									.put("partition",
-											record.getPartition().partition)
-									.put("topic", record.getTopic()).build();
-
-							String path = committedPath()
-									+ record.getPartition().getId();
-							zkState.writeJSON(path, metadata);
-							lastRefreshTime = System.currentTimeMillis();
+							return null;
 						}
 
-					}
-				});
+						public String committedPath() {
+							return _kafkaConfig._stateConf
+									.get(Config.ZOOKEEPER_CONSUMER_PATH)
+									+ "/"
+									+ _kafkaConfig._stateConf
+											.get(Config.KAFKA_CONSUMER_ID)
+									+ "/"
+									+ _kafkaConfig._stateConf
+											.get(Config.KAFKA_TOPIC)
+									+ "/processed/";
+						}
 
-		
+						public void ack(MessageAndMetadata record,
+								ZkState zkState) {
+
+							if ((System.currentTimeMillis() - lastRefreshTime) > 5000) {
+
+								Map<Object, Object> metadata = (Map<Object, Object>) ImmutableMap
+										.builder()
+										.put("consumer",
+												ImmutableMap.of("id",
+														record.getConsumer()))
+										.put("offset", record.getOffset())
+										.put("partition",
+												record.getPartition().partition)
+										.put("topic", record.getTopic())
+										.build();
+
+								String path = committedPath()
+										+ record.getPartition().getId();
+								zkState.writeJSON(path, metadata);
+								lastRefreshTime = System.currentTimeMillis();
+							}
+
+						}
+					});
+		} catch (Exception ex) {
+
+			ex.printStackTrace();
+		}
+
 		ssc.checkpoint(checkpointDirectory);
 		ssc.start();
 		ssc.awaitTermination();
