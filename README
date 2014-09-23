@@ -56,6 +56,8 @@ zookeeper.consumer.connection=localhost:2182
 zookeeper.consumer.path=/spark-kafka
 # Kafka Consumer ID. This ID will be used for accessing offset details in $zookeeper.consumer.path
 kafka.consumer.id=12345
+
+# Optional RDD Processor Class.
 # Target Message Processing Class. This must implements consumer.kafka.client.IIndexer
 target.indexer.class=com.pearson.hbase.RDDPProcessor
 
