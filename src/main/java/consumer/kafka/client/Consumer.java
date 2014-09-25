@@ -129,7 +129,9 @@ public class Consumer implements Serializable {
 									try {
 
 										indexer.process(record.getPayload());
-										ack(record, zkState);
+										
+										//Use ack to replay messages when Driver failed. Need to re-look it for a better design.
+										//ack(record, zkState);
 
 									} catch (Exception ex) {
 
