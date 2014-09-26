@@ -1,3 +1,27 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ *  Kafka Spark Consumer code is taken from Kafka spout of the Apache Storm project (https://github.com/apache/storm/tree/master/external/storm-kafka), 
+ *  which was originally created by wurstmeister (https://github.com/wurstmeister/storm-kafka-0.8-plus)
+ *  This file has been modified to work with Spark Streaming.
+ */
+
 package consumer.kafka;
 
 import java.net.ConnectException;
@@ -74,34 +98,5 @@ public class KafkaUtils {
 		}
 
 		return fetchResponse;
-		/*
-		 * if (fetchResponse.hasError()) { KafkaError error =
-		 * KafkaError.getError(fetchResponse.errorCode( topic, partitionId)); if
-		 * (error.equals(KafkaError.OFFSET_OUT_OF_RANGE) &&
-		 * config._useStartOffsetTimeIfOffsetOutOfRange && errors == 0) { long
-		 * startOffset = getOffset(consumer, topic, partitionId,
-		 * config._startOffsetTime);
-		 * LOG.warn("Got fetch request with offset out of range: [" + offset +
-		 * "]; for Topic" + topic + " ." +
-		 * "retrying with default start offset time from configuration. " +
-		 * "configured latest offset time: [" + config._startOffsetTime +
-		 * "] offset: [" + startOffset + "]"); offset = startOffset;
-		 * 
-		 * LOG.warn("Retyring to fetch again from offset for topic " + topic +
-		 * " from offset " + offset); fetchRequest = builder .addFetch(topic,
-		 * partitionId, offset, config._fetchSizeBytes) .clientId( (String)
-		 * config._stateConf .get(Config.KAFKA_BLUR_CONSUMER_ID)) .build();
-		 * 
-		 * try { fetchResponse = consumer.fetch(fetchRequest); return
-		 * fetchResponse.messageSet(topic, partitionId); } catch (Exception e) {
-		 * LOG.warn("Fetch failed again"); if (e instanceof ConnectException) {
-		 * e.printStackTrace();; } else { e.printStackTrace(); } }
-		 * 
-		 * 
-		 * } else { String message = "Error fetching data from [" + partition +
-		 * "] for topic [" + topic + "]: [" + error + "]"; LOG.error(message);
-		 * throw new FailedFetchException(message); } } else { msgs =
-		 * fetchResponse.messageSet(topic, partitionId); } }
-		 */
 	}
 }

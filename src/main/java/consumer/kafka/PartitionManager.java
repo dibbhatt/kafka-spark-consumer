@@ -1,3 +1,27 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ *  Kafka Spark Consumer code is taken from Kafka spout of the Apache Storm project (https://github.com/apache/storm/tree/master/external/storm-kafka), 
+ *  which was originally created by wurstmeister (https://github.com/wurstmeister/storm-kafka-0.8-plus)
+ *  This file has been modified to work with Spark Streaming.
+ */
+
 package consumer.kafka;
 
 import java.io.Serializable;
@@ -53,7 +77,7 @@ public class PartitionManager implements Serializable {
 		_topic = (String) _stateConf.get(Config.KAFKA_TOPIC);
 		_receiver = receiver;
 		_restart = restart;
-		_fillFreqMs = 500;
+		_fillFreqMs = 100;
 
 		String consumerJsonId = null;
 		Long jsonOffset = null;
@@ -126,7 +150,9 @@ public class PartitionManager implements Serializable {
 
 			if (_lastFillTime == null
 					|| (System.currentTimeMillis() - _lastFillTime) > _fillFreqMs) {
-				LOG.info("_waitingToEmit is empty for topic " + _topic + " for partition " + _partition.partition + ".. Filling it every 500 Mili Seconds");
+				LOG.info("_waitingToEmit is empty for topic " + _topic
+						+ " for partition " + _partition.partition
+						+ ".. Filling it every 500 Mili Seconds");
 				fill();
 				_lastFillTime = System.currentTimeMillis();
 			}
@@ -151,7 +177,7 @@ public class PartitionManager implements Serializable {
 							mmeta.setConsumer(_ConsumerId);
 							mmeta.setOffset(_lastEnquedOffset);
 							mmeta.setPartition(_partition);
-							byte[] payload = new byte[msg.payload().remaining()];						
+							byte[] payload = new byte[msg.payload().remaining()];
 							msg.payload().get(payload);
 							mmeta.setPayload(payload);
 
@@ -171,9 +197,9 @@ public class PartitionManager implements Serializable {
 							+ _partition + " for topic " + _topic
 							+ " with Exception" + e.getMessage());
 					e.printStackTrace();
-					throw new RuntimeException("Process Failed for offset " + key + " for  "
-							+ _partition + " for topic " + _topic
-							+ " with Exception" + e.getMessage());
+					throw new RuntimeException("Process Failed for offset "
+							+ key + " for  " + _partition + " for topic "
+							+ _topic + " with Exception" + e.getMessage());
 				}
 			} else {
 
