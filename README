@@ -1,13 +1,19 @@
 README file for Kafka-Spark-Consumer
 ===================================
 
+NOTE : This Kafka Spark Consumer code is taken from Kafka spout of the Apache Storm project (https://github.com/apache/storm/tree/master/external/storm-kafka), 
+which was originally created by wurstmeister (https://github.com/wurstmeister/storm-kafka-0.8-plus).
+Original Storm Kafka Spout Code has been modified to work with Spark Streaming.
+
+ 
+
 This utility will help to pull messages from Kafka Cluster using Spark Streaming.
 The Kafka Consumer is Low Level Kafka Consumer ( SimpleConsumer) and have better handling of the Kafka Offsets and handle failures.
 
 This code have implemented a Custom Receiver consumer.kafka.client.KafkaReceiver. The KafkaReceiver uses low level Kafka Consumer API (implemented in consumer.kafka packages) to fetch messages from Kafka and 'store' it in Spark.
 
-The logic will detect number of partitions for a topic and spawn that many threads (Individual instances of Consumers).
-Kafka Consumer uses Zookeeper for storing the latest offset for individual partitions, which will help to recover in case of failure .
+The logic will detect number of partitions for a topic and spawn that many Kafka Receivers.
+Kafka Receivers uses Zookeeper for storing the latest offset for individual partitions, which will help to recover in case of failure .
 
 The consumer.kafka.client.Consumer is the sample Consumer which uses this Kafka Receivers to generate DStreams from Kafka and apply a Output operation for every messages of the RDD.
 
