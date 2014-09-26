@@ -17,9 +17,9 @@
  */
 
 /*
- *  Kafka Spark Consumer code is taken from Kafka spout of the Apache Storm project (https://github.com/apache/storm/tree/master/external/storm-kafka), 
- *  which was originally created by wurstmeister (https://github.com/wurstmeister/storm-kafka-0.8-plus)
- *  This file has been modified to work with Spark Streaming.
+ *   This file is based on the source code of the Kafka spout of the Apache Storm project.
+ *   (https://github.com/apache/storm/tree/master/external/storm-kafka)
+ *   This file has been modified to work with Spark Streaming.
  */
 
 package consumer.kafka;
