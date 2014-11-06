@@ -25,6 +25,7 @@
 package consumer.kafka;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Map;
 
@@ -77,7 +78,7 @@ public class PartitionManager implements Serializable {
 		_topic = (String) _stateConf.get(Config.KAFKA_TOPIC);
 		_receiver = receiver;
 		_restart = restart;
-		_fillFreqMs = 100;
+		_fillFreqMs = 200;
 
 		String consumerJsonId = null;
 		Long jsonOffset = null;
@@ -156,8 +157,11 @@ public class PartitionManager implements Serializable {
 				fill();
 				_lastFillTime = System.currentTimeMillis();
 			}
+			
 		}
 
+		ArrayList<MessageAndMetadata> dataBuffer = new ArrayList<MessageAndMetadata>();
+		
 		while (true) {
 			MessageAndOffset msgAndOffset = _waitingToEmit.pollFirst();
 
@@ -183,8 +187,8 @@ public class PartitionManager implements Serializable {
 
 							if (msg.hasKey())
 								mmeta.setKey(msg.key().array());
-
-							_receiver.store(mmeta);
+							
+							dataBuffer.add(mmeta);
 
 							LOG.info("Store for topic " + _topic
 									+ " for partition " + _partition.partition
@@ -197,9 +201,6 @@ public class PartitionManager implements Serializable {
 							+ _partition + " for topic " + _topic
 							+ " with Exception" + e.getMessage());
 					e.printStackTrace();
-					throw new RuntimeException("Process Failed for offset "
-							+ key + " for  " + _partition + " for topic "
-							+ _topic + " with Exception" + e.getMessage());
 				}
 			} else {
 
@@ -209,7 +210,13 @@ public class PartitionManager implements Serializable {
 
 		if ((_lastEnquedOffset > _lastComittedOffset)
 				&& (_waitingToEmit.isEmpty())) {
-			commit();
+			if(dataBuffer.size() > 0){
+				
+				_receiver.store(dataBuffer.iterator());
+				commit();
+				dataBuffer.clear();
+			}
+			
 		}
 	}
 

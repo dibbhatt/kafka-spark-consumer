@@ -25,9 +25,10 @@ import org.apache.spark.streaming.receiver.Receiver;
 
 import consumer.kafka.KafkaConfig;
 import consumer.kafka.KafkaConsumer;
+import consumer.kafka.MessageAndMetadata;
 import consumer.kafka.ZkState;
 
-public class KafkaReceiver extends Receiver {
+public class KafkaReceiver extends Receiver<MessageAndMetadata> {
 
 	private static final long serialVersionUID = -4927707326026616451L;
 	private final Properties _props;
