@@ -51,6 +51,7 @@ public class PartitionManager implements Serializable {
 	Long _lastComittedOffset;
 	Long _lastEnquedOffset;
 	LinkedList<MessageAndOffset> _waitingToEmit = new LinkedList<MessageAndOffset>();
+	ArrayList<MessageAndMetadata> _dataBuffer = new ArrayList<MessageAndMetadata>();
 	Partition _partition;
 	KafkaConfig _kafkaconfig;
 	String _ConsumerId;
@@ -160,7 +161,7 @@ public class PartitionManager implements Serializable {
 			
 		}
 
-		ArrayList<MessageAndMetadata> dataBuffer = new ArrayList<MessageAndMetadata>();
+		
 		
 		while (true) {
 			MessageAndOffset msgAndOffset = _waitingToEmit.pollFirst();
@@ -188,7 +189,7 @@ public class PartitionManager implements Serializable {
 							if (msg.hasKey())
 								mmeta.setKey(msg.key().array());
 							
-							dataBuffer.add(mmeta);
+							_dataBuffer.add(mmeta);
 
 							LOG.info("Store for topic " + _topic
 									+ " for partition " + _partition.partition
@@ -210,11 +211,11 @@ public class PartitionManager implements Serializable {
 
 		if ((_lastEnquedOffset > _lastComittedOffset)
 				&& (_waitingToEmit.isEmpty())) {
-			if(dataBuffer.size() > 0){
+			if(_dataBuffer.size() > 0){
 				
-				_receiver.store(dataBuffer.iterator());
+				_receiver.store(_dataBuffer.iterator());
 				commit();
-				dataBuffer.clear();
+				_dataBuffer.clear();
 			}
 			
 		}
