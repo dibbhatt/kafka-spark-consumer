@@ -42,20 +42,20 @@ If you want to use this Kafka-Spark-Consumer for you target client application, 
 				
 and use spark-kafka.properties to include below details.
 
-*Kafka ZK details from where messages will be pulled
+* Kafka ZK details from where messages will be pulled
 	zookeeper.hosts=host1,host2
-*Kafka ZK Port
+* Kafka ZK Port
 	zookeeper.port=2181
-*Kafka Broker path in ZK
+* Kafka Broker path in ZK
 	zookeeper.broker.path=/brokers
-*Kafka Topic to consume
+* Kafka Topic to consume
 	kafka.topic=topic-name
 
-*Consumer ZK Path. This will be used to store the consumed offset
+* Consumer ZK Path. This will be used to store the consumed offset
 	zookeeper.consumer.connection=localhost:2182
-*ZK Path for storing Kafka Consumer offset
+* ZK Path for storing Kafka Consumer offset
 	zookeeper.consumer.path=/spark-kafka
-*Kafka Consumer ID. This ID will be used for accessing offset details in $zookeeper.consumer.path
+* Kafka Consumer ID. This ID will be used for accessing offset details in $zookeeper.consumer.path
 	kafka.consumer.id=12345
 
 
