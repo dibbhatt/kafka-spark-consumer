@@ -34,11 +34,15 @@ import java.util.Properties;
 
 public class KafkaConfig implements Serializable {
 
-	public int _fetchSizeBytes = 64 * 1024;
-	public int _socketTimeoutMs = 10000;
-	public int _bufferSizeBytes = 1024 * 1024;
+	public int _fetchSizeBytes = 512 * 1024;
+	public int _fillFreqMs = 200 ;
+
+	public int _bufferSizeBytes =_fetchSizeBytes ;
+
 
 	public int _refreshFreqSecs = 100;
+	public int _socketTimeoutMs = 10000;
+
 
 	public boolean _forceFromStart = true;
 	public long _startOffsetTime = kafka.api.OffsetRequest.EarliestTime();

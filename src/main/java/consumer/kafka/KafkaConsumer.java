@@ -67,6 +67,7 @@ public class KafkaConsumer implements Runnable, Serializable {
 
 	public void close() {
 		_state.close();
+		_connections.clear();
 	}
 
 	public void createStream() {
@@ -91,7 +92,6 @@ public class KafkaConsumer implements Runnable, Serializable {
 	}
 
 	private void commit() {
-		_lastUpdateMs = System.currentTimeMillis();
 		_coordinator.getMyManagedPartitions().get(0).commit();
 	}
 
@@ -106,12 +106,9 @@ public class KafkaConsumer implements Runnable, Serializable {
 			}
 
 		} catch (Throwable t) {
-
-			LOG.error("Error during Receiver Run " + t.getMessage()
-					+ " trying to restart");
-			t.printStackTrace();
-			_receiver.restart("Trying to connect Receiver for Partition "
-					+ _currPartitionIndex);
+							
+			this.close();			
+			throw new RuntimeException(t);
 
 		}
 

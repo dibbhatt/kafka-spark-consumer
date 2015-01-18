@@ -37,29 +37,42 @@ public class KafkaReceiver extends Receiver<MessageAndMetadata> {
 	private transient Thread _consumerThread;
 
 	public KafkaReceiver(Properties props, int partitionId) {
-		super(StorageLevel.MEMORY_ONLY_SER_2());
+		super(StorageLevel.MEMORY_ONLY());
 		this._props = props;
 		_partitionId = partitionId;
 	}
 
 	@Override
 	public void onStart() {
+		
+		start();
+
+	}
+
+	private void start() {
+		
 		// Start the thread that receives data over a connection
 		KafkaConfig kafkaConfig = new KafkaConfig(_props);
 		ZkState zkState = new ZkState(kafkaConfig);
 		_kConsumer = new KafkaConsumer(kafkaConfig, zkState, this);
 		_kConsumer.open(_partitionId);
+		
+		Thread.UncaughtExceptionHandler eh = new Thread.UncaughtExceptionHandler() {
+		    public void uncaughtException(Thread th, Throwable ex) {
+		    	restart("Restarting Receiver for Partition " + _partitionId , ex, 5000);
+		    }
+		};
+		
 		_consumerThread = new Thread(_kConsumer);
 		_consumerThread.setDaemon(true);
-		_consumerThread.start();
-
+		_consumerThread.setUncaughtExceptionHandler(eh);
+		_consumerThread.start();		
 	}
 
 	@Override
 	public void onStop() {
 
-		_kConsumer.close();
-		_consumerThread.interrupt();
-
+		if(_consumerThread.isAlive())
+			_consumerThread.interrupt();
 	}
 }

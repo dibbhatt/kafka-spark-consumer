@@ -119,7 +119,7 @@ public class Consumer implements Serializable {
 			unionStreams = streamsList.get(0);
 		}
 
-		// unionStreams.checkpoint(new Duration(10000));
+		 unionStreams.checkpoint(new Duration(10000));
 
 		try {
 			unionStreams

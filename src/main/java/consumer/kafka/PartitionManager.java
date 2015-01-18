@@ -64,7 +64,6 @@ public class PartitionManager implements Serializable {
 	KafkaReceiver _receiver;
 	boolean _restart;
 	Long _lastFillTime = null;
-	int _fillFreqMs;
 
 	public PartitionManager(DynamicPartitionConnections connections,
 			ZkState state, KafkaConfig kafkaconfig, Partition partiionId,
@@ -79,7 +78,6 @@ public class PartitionManager implements Serializable {
 		_topic = (String) _stateConf.get(Config.KAFKA_TOPIC);
 		_receiver = receiver;
 		_restart = restart;
-		_fillFreqMs = 200;
 
 		String consumerJsonId = null;
 		Long jsonOffset = null;
@@ -151,7 +149,7 @@ public class PartitionManager implements Serializable {
 		if (_waitingToEmit.isEmpty()) {
 
 			if (_lastFillTime == null
-					|| (System.currentTimeMillis() - _lastFillTime) > _fillFreqMs) {
+					|| (System.currentTimeMillis() - _lastFillTime) > _kafkaconfig._fillFreqMs) {
 				LOG.info("_waitingToEmit is empty for topic " + _topic
 						+ " for partition " + _partition.partition
 						+ ".. Filling it every 500 Mili Seconds");
@@ -211,11 +209,19 @@ public class PartitionManager implements Serializable {
 
 		if ((_lastEnquedOffset > _lastComittedOffset)
 				&& (_waitingToEmit.isEmpty())) {
-			if(_dataBuffer.size() > 0){
+			if(_dataBuffer.size() > 0 && !(_receiver.isStopped())){
 				
-				_receiver.store(_dataBuffer.iterator());
-				commit();
-				_dataBuffer.clear();
+				try{
+					
+					_receiver.store(_dataBuffer.iterator());
+					commit();
+					_dataBuffer.clear();
+					
+				}catch(Exception ex){
+					
+					_dataBuffer.clear();
+					_receiver.reportError("Error While Store for Partition "+ _partition, ex);
+				}
 			}
 			
 		}
