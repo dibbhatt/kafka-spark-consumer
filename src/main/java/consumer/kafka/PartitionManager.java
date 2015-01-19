@@ -219,6 +219,7 @@ public class PartitionManager implements Serializable {
 					
 				}catch(Exception ex){
 					
+					_emittedToOffset = _lastComittedOffset;
 					_dataBuffer.clear();
 					_receiver.reportError("Error While Store for Partition "+ _partition, ex);
 				}
@@ -301,7 +302,7 @@ public class PartitionManager implements Serializable {
 			Map<Object, Object> data = (Map<Object, Object>) ImmutableMap
 					.builder()
 					.put("consumer", ImmutableMap.of("id", _ConsumerId))
-					.put("offset", _lastEnquedOffset)
+					.put("offset", _emittedToOffset)
 					.put("partition", _partition.partition)
 					.put("broker",
 							ImmutableMap.of("host", _partition.host.host,
@@ -310,9 +311,9 @@ public class PartitionManager implements Serializable {
 
 			try {
 				_state.writeJSON(committedPath(), data);
-				LOG.info("Wrote committed offset to ZK: " + _lastEnquedOffset);
+				LOG.info("Wrote committed offset to ZK: " + _emittedToOffset);
 				_waitingToEmit.clear();
-				_lastComittedOffset = _lastEnquedOffset;
+				_lastComittedOffset = _emittedToOffset;
 			} catch (Exception zkEx) {
 				LOG.error("Error during commit. Let wait for refresh "
 						+ zkEx.getMessage());
