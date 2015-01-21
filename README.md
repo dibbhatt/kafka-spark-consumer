@@ -58,6 +58,28 @@ and use spark-kafka.properties to include below details.
 * Kafka Consumer ID. This ID will be used for accessing offset details in $zookeeper.consumer.path
 	* kafka.consumer.id=12345
 
+Some Tuning Options
+===================
+
+The Low Level Kafka Consumer consumes messages from Kafka in Rate Limiting way. Default settings can be found in consumer.kafka.KafkaConfig.java class
+
+You can see following two variables
+
+	public int _fetchSizeBytes = 512 * 1024;
+	public int _fillFreqMs = 200 ;
+	
+This suggests that, Receiver for any given Partition of a Topic will pull 512 KB Block of data at every 200ms.
+With this default settings, let assume your Kafka Topic have 5 partitions, and your Spark Batch Duration is say 10 Seconds, this Consumer will pull
+
+512 KB x ( 10 seconds / 200 ms ) x 5 = 128 MB of data for every Batch.
+
+If you need higher rate, you can increase the _fetchSizeBytes , or if you need less number of Block generated you can increase _fillFreqMs.
+
+These two parameter need to be carefully tuned keeping in mind your downstream processing rate and your memory settings.
+
+Once you change these settings, you need to rebuild kafka-spark-consumer.
+
+
 
 Running Spark Kafka Consumer
 ===========================
