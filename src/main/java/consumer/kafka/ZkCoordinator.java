@@ -79,7 +79,8 @@ public class ZkCoordinator implements PartitionCoordinator, Serializable {
 		return _cachedList;
 	}
 
-	void refresh() {
+	@Override
+	public void refresh() {
 		try {
 			LOG.info("Refreshing partition manager connections");
 			_brokerInfo = _reader.getBrokerInfo();

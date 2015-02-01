@@ -152,7 +152,7 @@ public class PartitionManager implements Serializable {
 					|| (System.currentTimeMillis() - _lastFillTime) > _kafkaconfig._fillFreqMs) {
 				LOG.info("_waitingToEmit is empty for topic " + _topic
 						+ " for partition " + _partition.partition
-						+ ".. Filling it every 500 Mili Seconds");
+						+ ".. Filling it every "+ _kafkaconfig._fillFreqMs +" miliseconds");
 				fill();
 				_lastFillTime = System.currentTimeMillis();
 			}
@@ -285,9 +285,9 @@ public class PartitionManager implements Serializable {
 				LOG.info("Total " + _waitingToEmit.size()
 						+ " messages from Kafka: " + _consumer.host() + ":"
 						+ _partition.partition + " there in internal buffers");
-		} catch (Exception kafkaEx) {
-			LOG.error("Exception during fill " + kafkaEx.getMessage());
-			kafkaEx.printStackTrace();
+		} catch (FailedFetchException fe) {
+			LOG.error("Exception during fill " + fe.getMessage());
+			throw fe;
 		}
 	}
 

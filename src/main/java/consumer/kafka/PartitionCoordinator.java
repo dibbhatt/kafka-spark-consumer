@@ -31,4 +31,6 @@ public interface PartitionCoordinator extends Serializable {
 	List<PartitionManager> getMyManagedPartitions();
 
 	PartitionManager getManager(Partition partition);
+	
+	void refresh();
 }

@@ -24,7 +24,10 @@
 
 package consumer.kafka;
 
+import java.io.IOException;
 import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+import java.nio.channels.UnresolvedAddressException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -90,7 +93,12 @@ public class KafkaUtils {
 		try {
 			fetchResponse = consumer.fetch(fetchRequest);
 		} catch (Exception e) {
-			if (e instanceof ConnectException) {
+			if (e instanceof ConnectException ||
+                    e instanceof SocketTimeoutException ||
+                    e instanceof IOException ||
+                    e instanceof UnresolvedAddressException) {
+				
+				LOG.warn("Network error when fetching messages:", e);
 				throw new FailedFetchException(e);
 			} else {
 				throw new RuntimeException(e);

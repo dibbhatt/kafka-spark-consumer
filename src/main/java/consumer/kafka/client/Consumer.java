@@ -21,10 +21,8 @@ package consumer.kafka.client;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.Serializable;
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 import org.apache.commons.cli.CommandLine;
@@ -40,12 +38,8 @@ import org.apache.spark.streaming.Time;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
 
-import com.google.common.collect.ImmutableMap;
-
-import consumer.kafka.Config;
 import consumer.kafka.KafkaConfig;
 import consumer.kafka.MessageAndMetadata;
-import consumer.kafka.ZkState;
 
 public class Consumer implements Serializable {
 
@@ -98,8 +92,8 @@ public class Consumer implements Serializable {
 				_partitionCount);
 		JavaDStream<MessageAndMetadata> unionStreams;
 
-		SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver").set(
-				"spark.streaming.blockInterval", "200");
+		SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver")
+				.set("spark.streaming.receiver.writeAheadLog.enable", "true");;
 
 		JavaStreamingContext ssc = new JavaStreamingContext(_sparkConf,
 				new Duration(10000));
@@ -119,22 +113,11 @@ public class Consumer implements Serializable {
 			unionStreams = streamsList.get(0);
 		}
 
-		 unionStreams.checkpoint(new Duration(10000));
+		unionStreams.checkpoint(new Duration(10000));
 
 		try {
 			unionStreams
 					.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
-
-						long lastRefreshTime = 0L;
-						ZkState zkState = new ZkState(
-								(String) _kafkaConfig._stateConf
-										.get(Config.ZOOKEEPER_CONSUMER_CONNECTION));
-						transient Constructor constructor = Class.forName(
-								(String) _kafkaConfig._stateConf
-										.get(Config.TARGET_INDEXER_CLASS))
-								.getConstructor(String.class);
-						transient IIndexer indexer = (IIndexer) constructor
-								.newInstance(_props.getProperty("kafka.topic"));
 
 						@Override
 						public Void call(JavaRDD<MessageAndMetadata> rdd,
@@ -144,56 +127,13 @@ public class Consumer implements Serializable {
 
 								if (record != null) {
 
-									try {
-
-										indexer.process(record.getPayload());
-										// ack(record, zkState);
-
-									} catch (Exception ex) {
-
-										ex.printStackTrace();
-									}
+									System.out.println(new String(record
+											.getPayload()));
 
 								}
 
 							}
 							return null;
-						}
-
-						public String committedPath() {
-							return _kafkaConfig._stateConf
-									.get(Config.ZOOKEEPER_CONSUMER_PATH)
-									+ "/"
-									+ _kafkaConfig._stateConf
-											.get(Config.KAFKA_CONSUMER_ID)
-									+ "/"
-									+ _kafkaConfig._stateConf
-											.get(Config.KAFKA_TOPIC)
-									+ "/processed/";
-						}
-
-						public void ack(MessageAndMetadata record,
-								ZkState zkState) {
-
-							if ((System.currentTimeMillis() - lastRefreshTime) > 5000) {
-
-								Map<Object, Object> metadata = (Map<Object, Object>) ImmutableMap
-										.builder()
-										.put("consumer",
-												ImmutableMap.of("id",
-														record.getConsumer()))
-										.put("offset", record.getOffset())
-										.put("partition",
-												record.getPartition().partition)
-										.put("topic", record.getTopic())
-										.build();
-
-								String path = committedPath()
-										+ record.getPartition().getId();
-								zkState.writeJSON(path, metadata);
-								lastRefreshTime = System.currentTimeMillis();
-							}
-
 						}
 					});
 		} catch (Exception ex) {
@@ -201,7 +141,7 @@ public class Consumer implements Serializable {
 			ex.printStackTrace();
 		}
 
-		// ssc.checkpoint(checkpointDirectory);
+		ssc.checkpoint(checkpointDirectory);
 		ssc.start();
 		ssc.awaitTermination();
 	}

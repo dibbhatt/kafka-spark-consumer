@@ -75,7 +75,13 @@ public class KafkaConsumer implements Runnable, Serializable {
 			List<PartitionManager> managers = _coordinator
 					.getMyManagedPartitions();
 			managers.get(0).next();
-		} catch (Exception ex) {
+		}catch (FailedFetchException fe){
+			
+			fe.printStackTrace();
+			LOG.warn("Fetch failed. Refresing Coordinator..", fe);
+			_coordinator.refresh();		
+			
+		}catch (Exception ex) {
 			LOG.error("Partition " + _currPartitionIndex
 					+ " encountered error during createStream : "
 					+ ex.getMessage());
