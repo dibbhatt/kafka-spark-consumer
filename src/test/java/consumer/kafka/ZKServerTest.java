@@ -24,15 +24,15 @@ import java.util.Properties;
 
 import kafka.javaapi.consumer.SimpleConsumer;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.RetryNTimes;
+import org.apache.curator.utils.ZKPaths;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.framework.CuratorFrameworkFactory;
-import com.netflix.curator.retry.RetryNTimes;
-import com.netflix.curator.test.TestingServer;
-import com.netflix.curator.utils.ZKPaths;
+import org.apache.curator.test.TestingServer;
 
 public class ZKServerTest {
 	private DynamicBrokersReader _dynamicBrokersReader;

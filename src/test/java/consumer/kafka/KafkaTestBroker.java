@@ -22,10 +22,11 @@ import java.util.Properties;
 
 import kafka.server.KafkaServerStartable;
 
-import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.framework.CuratorFrameworkFactory;
-import com.netflix.curator.retry.ExponentialBackoffRetry;
-import com.netflix.curator.test.TestingServer;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
+
+import org.apache.curator.test.TestingServer;
 
 public class KafkaTestBroker {
 
@@ -69,7 +70,7 @@ public class KafkaTestBroker {
 		return port;
 	}
 
-	public void shutdown() {
+	public void shutdown() throws Exception{
 		kafka.shutdown();
 		server.stop();
 		server.close();
