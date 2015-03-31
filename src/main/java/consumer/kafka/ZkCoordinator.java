@@ -32,10 +32,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.spark.streaming.receiver.Receiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import consumer.kafka.client.KafkaReceiver;
 
 public class ZkCoordinator implements PartitionCoordinator, Serializable {
 	public static final Logger LOG = LoggerFactory
@@ -51,12 +50,12 @@ public class ZkCoordinator implements PartitionCoordinator, Serializable {
 	DynamicBrokersReader _reader;
 	GlobalPartitionInformation _brokerInfo;
 	KafkaConfig _config;
-	KafkaReceiver _receiver;
+	Receiver _receiver;
 	boolean _restart;
 
 	public ZkCoordinator(DynamicPartitionConnections connections,
 			KafkaConfig config, ZkState state, int partitionId,
-			KafkaReceiver receiver, boolean restart) {
+			Receiver receiver, boolean restart) {
 		_kafkaconfig = config;
 		_connections = connections;
 		_partitionOwner = partitionId;

@@ -27,10 +27,9 @@ package consumer.kafka;
 import java.io.Serializable;
 import java.util.List;
 
+import org.apache.spark.streaming.receiver.Receiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import consumer.kafka.client.KafkaReceiver;
 
 public class KafkaConsumer implements Runnable, Serializable {
 
@@ -45,10 +44,10 @@ public class KafkaConsumer implements Runnable, Serializable {
 	ZkState _state;
 	long _lastUpdateMs = 0;
 	int _currPartitionIndex = 0;
-	KafkaReceiver _receiver;
+	Receiver _receiver;
 
 	public KafkaConsumer(KafkaConfig blurConfig, ZkState zkState,
-			KafkaReceiver receiver) {
+			Receiver receiver) {
 		_kafkablurconfig = blurConfig;
 		_state = zkState;
 		_receiver = receiver;

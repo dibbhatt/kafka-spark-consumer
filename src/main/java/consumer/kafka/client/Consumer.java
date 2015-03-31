@@ -18,18 +18,9 @@
 
 package consumer.kafka.client;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Properties;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.OptionBuilder;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.PosixParser;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.Function2;
@@ -38,110 +29,56 @@ import org.apache.spark.streaming.Time;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
 
-import consumer.kafka.KafkaConfig;
 import consumer.kafka.MessageAndMetadata;
+import consumer.kafka.ReceiverLauncher;
 
 public class Consumer implements Serializable {
 
 	private static final long serialVersionUID = 4332618245650072140L;
-	private Properties _props;
-	private KafkaConfig _kafkaConfig;
-
+	
 	public void start() throws InstantiationException, IllegalAccessException,
 			ClassNotFoundException {
 
-		_kafkaConfig = new KafkaConfig(_props);
 		run();
-	}
-
-	private void init(String[] args) throws Exception {
-
-		Options options = new Options();
-		this._props = new Properties();
-
-		options.addOption("p", true, "properties filename from the classpath");
-		options.addOption("P", true, "external properties filename");
-
-		OptionBuilder.withArgName("property=value");
-		OptionBuilder.hasArgs(2);
-		OptionBuilder.withValueSeparator();
-		OptionBuilder.withDescription("use value for given property");
-		options.addOption(OptionBuilder.create("D"));
-
-		CommandLineParser parser = new PosixParser();
-		CommandLine cmd = parser.parse(options, args);
-		if (cmd.hasOption('p')) {
-			this._props.load(ClassLoader.getSystemClassLoader()
-					.getResourceAsStream(cmd.getOptionValue('p')));
-		}
-		if (cmd.hasOption('P')) {
-			File file = new File(cmd.getOptionValue('P'));
-			FileInputStream fStream = new FileInputStream(file);
-			this._props.load(fStream);
-		}
-		this._props.putAll(cmd.getOptionProperties("D"));
-
 	}
 
 	private void run() {
 
-		String checkpointDirectory = "hdfs://10.252.5.113:9000/user/hadoop/spark";
-		int _partitionCount = 3;
-
-		List<JavaDStream<MessageAndMetadata>> streamsList = new ArrayList<JavaDStream<MessageAndMetadata>>(
-				_partitionCount);
-		JavaDStream<MessageAndMetadata> unionStreams;
-
+		
+		Properties props = new Properties();
+		props.put("zookeeper.hosts", "10.252.5.131");
+		props.put("zookeeper.port", "2181");
+		props.put("zookeeper.broker.path", "/brokers");
+		props.put("kafka.topic", "valid_subpub");
+		props.put("kafka.consumer.id", "valid_subpub");		
+		props.put("zookeeper.consumer.connection", "10.252.5.113:2182");
+		props.put("zookeeper.consumer.path", "/kafka-new");
+		
 		SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver")
-				.set("spark.streaming.receiver.writeAheadLog.enable", "true");;
+				.set("spark.streaming.receiver.writeAheadLog.enable", "false");;
 
 		JavaStreamingContext ssc = new JavaStreamingContext(_sparkConf,
 				new Duration(10000));
+		
+		//Specify number of Receivers you need. 
+		//It should be less than or equal to number of Partitions of your topic
+		
+		int numberOfReceivers = 2;
 
-		for (int i = 0; i < _partitionCount; i++) {
+		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(ssc, props, numberOfReceivers);
 
-			streamsList.add(ssc.receiverStream(new KafkaReceiver(_props, i)));
+		unionStreams
+				.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
 
-		}
+					@Override
+					public Void call(JavaRDD<MessageAndMetadata> rdd,
+							Time time) throws Exception {
 
-		// Union all the streams if there is more than 1 stream
-		if (streamsList.size() > 1) {
-			unionStreams = ssc.union(streamsList.get(0),
-					streamsList.subList(1, streamsList.size()));
-		} else {
-			// Otherwise, just use the 1 stream
-			unionStreams = streamsList.get(0);
-		}
-
-		unionStreams.checkpoint(new Duration(10000));
-
-		try {
-			unionStreams
-					.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
-
-						@Override
-						public Void call(JavaRDD<MessageAndMetadata> rdd,
-								Time time) throws Exception {
-
-							for (MessageAndMetadata record : rdd.collect()) {
-
-								if (record != null) {
-
-									System.out.println(new String(record
-											.getPayload()));
-
-								}
-
-							}
-							return null;
-						}
-					});
-		} catch (Exception ex) {
-
-			ex.printStackTrace();
-		}
-
-		ssc.checkpoint(checkpointDirectory);
+						System.out.println("Number of records in this Batch is " + rdd.count());
+						return null;
+					}
+				});
+		
 		ssc.start();
 		ssc.awaitTermination();
 	}
@@ -149,7 +86,6 @@ public class Consumer implements Serializable {
 	public static void main(String[] args) throws Exception {
 
 		Consumer consumer = new Consumer();
-		consumer.init(args);
 		consumer.start();
 	}
 }

@@ -1,4 +1,4 @@
-import consumer.kafka.client.KafkaReceiver
+import consumer.kafka.ReceiverLauncher
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkContext, SparkConf}
 
@@ -45,7 +45,10 @@ object LowLevelKafkaConsumer {
     val zkhosts = "localhost"
     val zkports = "2181"
     val brokerPath = "/brokers"
-    val partitions = 3
+	
+	//Specify number of Receivers you need. 
+	//It should be less than or equal to number of Partitions of your topic
+    val numberOfReceivers = 3
 
     val kafkaProperties: Map[String, String] = Map("zookeeper.hosts" -> zkhosts,
                                                    "zookeeper.port" -> zkports,
@@ -57,15 +60,8 @@ object LowLevelKafkaConsumer {
 
     val props = new java.util.Properties()
     kafkaProperties foreach { case (key,value) => props.put(key, value)}
-
-
-    // Read data from all partitions
-    val kafkaStreams = (1 to partitions).map { i=>
-      ssc.receiverStream(new KafkaReceiver(props, i))
-    }
-
-    //union everything into one stream
-    val tmp_stream = ssc.union(kafkaStreams)
+	
+	val tmp_stream = ReceiverLauncher.launch(ssc, props, numberOfReceivers)
 
     tmp_stream.foreachRDD(rdd => println("\n\nNumber of records in this batch : " + rdd.count()))
 

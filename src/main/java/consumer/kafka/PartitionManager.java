@@ -36,12 +36,11 @@ import kafka.javaapi.message.ByteBufferMessageSet;
 import kafka.message.Message;
 import kafka.message.MessageAndOffset;
 
+import org.apache.spark.streaming.receiver.Receiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableMap;
-
-import consumer.kafka.client.KafkaReceiver;
 
 public class PartitionManager implements Serializable {
 	public static final Logger LOG = LoggerFactory
@@ -61,13 +60,13 @@ public class PartitionManager implements Serializable {
 	String _topic;
 	Map _stateConf;
 	Long _lastCommitMs = 0l;
-	KafkaReceiver _receiver;
+	Receiver _receiver;
 	boolean _restart;
 	Long _lastFillTime = null;
 
 	public PartitionManager(DynamicPartitionConnections connections,
 			ZkState state, KafkaConfig kafkaconfig, Partition partiionId,
-			KafkaReceiver receiver, boolean restart) {
+			Receiver receiver, boolean restart) {
 		_partition = partiionId;
 		_connections = connections;
 		_kafkaconfig = kafkaconfig;
