@@ -208,13 +208,15 @@ public class PartitionManager implements Serializable {
 
 		if ((_lastEnquedOffset > _lastComittedOffset)
 				&& (_waitingToEmit.isEmpty())) {
-			if(_dataBuffer.size() > 0 && !(_receiver.isStopped())){
+			if(_dataBuffer.size() > 0){
 				
 				try{
-					
-					_receiver.store(_dataBuffer.iterator());
-					commit();
-					_dataBuffer.clear();
+					synchronized (_receiver) {
+						
+						_receiver.store(_dataBuffer.iterator());
+						commit();
+						_dataBuffer.clear();
+					}
 					
 				}catch(Exception ex){
 					
