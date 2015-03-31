@@ -33,7 +33,7 @@ import consumer.kafka.ZkState;
 
 public class KafkaRangeReceiver extends Receiver<MessageAndMetadata> {
 
-	private static final long serialVersionUID = -4927707326026616451L;
+	private static final long serialVersionUID = -4434734456026616121L;
 	private final Properties _props;
 	private Set<Integer> _partitionSet ;
 	private KafkaConsumer _kConsumer;
@@ -53,7 +53,7 @@ public class KafkaRangeReceiver extends Receiver<MessageAndMetadata> {
 
 	}
 
-	private void start() {
+	public void start() {
 		
 		// Start the thread that receives data over a connection
 		_executorService = Executors.newFixedThreadPool(_partitionSet.size());

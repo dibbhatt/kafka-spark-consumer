@@ -57,15 +57,15 @@ public class Consumer implements Serializable {
 		SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver")
 				.set("spark.streaming.receiver.writeAheadLog.enable", "false");;
 
-		JavaStreamingContext ssc = new JavaStreamingContext(_sparkConf,
+		JavaStreamingContext jsc = new JavaStreamingContext(_sparkConf,
 				new Duration(10000));
 		
 		//Specify number of Receivers you need. 
 		//It should be less than or equal to number of Partitions of your topic
 		
-		int numberOfReceivers = 2;
+		int numberOfReceivers = 3;
 
-		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(ssc, props, numberOfReceivers);
+		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(jsc, props, numberOfReceivers);
 
 		unionStreams
 				.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
@@ -79,8 +79,8 @@ public class Consumer implements Serializable {
 					}
 				});
 		
-		ssc.start();
-		ssc.awaitTermination();
+		jsc.start();
+		jsc.awaitTermination();
 	}
 
 	public static void main(String[] args) throws Exception {

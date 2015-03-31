@@ -49,7 +49,7 @@ public class KafkaReceiver extends Receiver<MessageAndMetadata> {
 
 	}
 
-	private void start() {
+	public void start() {
 		
 		// Start the thread that receives data over a connection
 		KafkaConfig kafkaConfig = new KafkaConfig(_props);
