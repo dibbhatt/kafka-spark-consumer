@@ -41,6 +41,8 @@ object LowLevelKafkaConsumer {
 	//It should be less than or equal to number of Partitions of your topic
     val numberOfReceivers = 1
 
+	//The number of partitions for the topic will be figured out automatically
+	//However, it can be manually specified by adding kafka.partitions.number property
     val kafkaProperties: Map[String, String] = Map("zookeeper.hosts" -> zkhosts,
                                                    "zookeeper.port" -> zkports,
                                                    "zookeeper.broker.path" -> brokerPath ,
