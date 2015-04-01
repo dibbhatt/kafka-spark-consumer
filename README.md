@@ -112,10 +112,10 @@ Java Example
 Scala Example
 =============
 
-   //Create SparkContext
-    val conf = new SparkConf()
-      .setMaster("spark://x.x.x.x:7077")
-      .setAppName("LowLevelKafkaConsumer")
+
+	val conf = new SparkConf()
+	.setMaster("spark://x.x.x.x:7077")
+	.setAppName("LowLevelKafkaConsumer")
 
     val sc = new SparkContext(conf)
 
