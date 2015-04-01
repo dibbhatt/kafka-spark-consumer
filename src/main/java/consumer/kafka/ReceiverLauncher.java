@@ -39,15 +39,19 @@ public class ReceiverLauncher implements Serializable{
 		
 		List<JavaDStream<MessageAndMetadata>> streamsList = new ArrayList<JavaDStream<MessageAndMetadata>>();
 		JavaDStream<MessageAndMetadata> unionStreams;
+		int numberOfPartition;
+		String numberOfPartitionStr = (String) pros.getProperty(Config.KAFKA_PARTITIONS_NUMBER);
+		if (numberOfPartitionStr != null) {
+			numberOfPartition = Integer.parseInt(numberOfPartitionStr);
+		} else {
+			KafkaConfig kafkaConfig = new KafkaConfig(pros);
+			ZkState zkState = new ZkState(kafkaConfig);
 		
-		KafkaConfig kafkaConfig = new KafkaConfig(pros);
-		ZkState zkState = new ZkState(kafkaConfig);
-		
-		_zkPath = (String) kafkaConfig._stateConf.get(Config.ZOOKEEPER_BROKER_PATH);
-		_topic = (String) kafkaConfig._stateConf.get(Config.KAFKA_TOPIC);
-		
-		int numberOfPartition = getNumPartitions(zkState);
-		
+			_zkPath = (String) kafkaConfig._stateConf.get(Config.ZOOKEEPER_BROKER_PATH);
+			_topic = (String) kafkaConfig._stateConf.get(Config.KAFKA_TOPIC);
+			numberOfPartition = getNumPartitions(zkState);
+		}
+
 		//Create as many Receiver as Partition
 		if(numberOfReceivers >= numberOfPartition) {
 			

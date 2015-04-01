@@ -61,6 +61,8 @@ and use below properties. ( See Java and Scala Code example on how to use these 
 	* zookeeper.consumer.path=/spark-kafka
 * Kafka Consumer ID. This ID will be used for accessing offset details in $zookeeper.consumer.path
 	* kafka.consumer.id=12345
+* Number of partitions for the topic. Optional. Only required if ZK is not reachable from the driver.
+	* kafka.partitions.number=100
 
 
 Java Example
