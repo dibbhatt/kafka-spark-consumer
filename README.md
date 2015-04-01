@@ -18,18 +18,9 @@ Number of Receivers should be less than or equal to the number of Partitions for
 
 In your driver code , you can launch the Receivers by calling ReceiverLauncher.launch
 
-e.g. JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(ssc, props, numberOfReceivers);
-
-Complete example is available here : 
-
-The src/main/java/consumer/kafka/client/Consumer.java is the sample Java code which uses this ReceiverLauncher to generate DStreams from Kafka and apply a Output operation for every messages of the RDD.
-
-Similarly examples/scala/LowLevelKafkaConsumer.scala is a sample scala code on how to use this utility.
+Please see Java or Scala code example on how to use this Low Level Consumer
 
 Kafka Receivers uses Zookeeper for storing the latest offset for individual partitions, which will help to recover in case of failure .
-
-Note : If you need more finer control of your Receivers, you can directly use KafkaReceiver or KafkaRangeReceiver based on your use case like you want to consume from ONLY one Partition , or you want to consume from 
-SUBSET of partition . 
 
 
 Following are the instructions to build 
@@ -53,7 +44,7 @@ If you want to use this Kafka-Spark-Consumer for you target client application, 
                 </dependency>
 
 				
-and use spark-kafka.properties to include below details.
+and use below properties. ( See Java and Scala Code example on how to use these properties)
 
 * Kafka ZK details from where messages will be pulled. Speficy ZK Host IP address
 	* zookeeper.hosts=host1,host2
@@ -71,6 +62,100 @@ and use spark-kafka.properties to include below details.
 * Kafka Consumer ID. This ID will be used for accessing offset details in $zookeeper.consumer.path
 	* kafka.consumer.id=12345
 
+
+Java Example
+============
+
+		Properties props = new Properties();
+		props.put("zookeeper.hosts", "x.x.x.x");
+		props.put("zookeeper.port", "2181");
+		props.put("zookeeper.broker.path", "/brokers");
+		props.put("kafka.topic", "some-topic");
+		props.put("kafka.consumer.id", "consumer-id");		
+		props.put("zookeeper.consumer.connection", "x.x.x.x:2181");
+		props.put("zookeeper.consumer.path", "/consumer-path");
+		
+		SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver")
+				.set("spark.streaming.receiver.writeAheadLog.enable", "false");;
+
+		JavaStreamingContext jsc = new JavaStreamingContext(_sparkConf,
+				new Duration(10000));
+		
+		//Specify number of Receivers you need. 
+		//It should be less than or equal to number of Partitions of your topic
+		
+		int numberOfReceivers = 3;
+
+		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(jsc, props, numberOfReceivers);
+
+		unionStreams
+				.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
+
+					@Override
+					public Void call(JavaRDD<MessageAndMetadata> rdd,
+							Time time) throws Exception {
+
+						System.out.println("Number of records in this Batch is " + rdd.count());
+						return null;
+					}
+				});
+		
+		jsc.start();
+		jsc.awaitTermination();
+		
+
+		Complete example is available here : 
+
+		The src/main/java/consumer/kafka/client/Consumer.java is the sample Java code which uses this ReceiverLauncher to generate DStreams from Kafka and apply a Output operation for every messages of the RDD.
+
+		
+Scala Example
+=============
+
+   //Create SparkContext
+    val conf = new SparkConf()
+      .setMaster("spark://x.x.x.x:7077")
+      .setAppName("LowLevelKafkaConsumer")
+
+    val sc = new SparkContext(conf)
+
+    //Might want to uncomment and add the jars if you are running on standalone mode.
+    //sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-0.0.1-SNAPSHOT-jar-with-dependencies.jar")
+	
+    val ssc = new StreamingContext(sc, Seconds(10))
+
+    val topic = "some-topic"
+    val zkhosts = "x.x.x.x"
+    val zkports = "2181"
+    val brokerPath = "/brokers"
+	
+	//Specify number of Receivers you need. 
+	//It should be less than or equal to number of Partitions of your topic
+    val numberOfReceivers = 3
+
+    val kafkaProperties: Map[String, String] = Map("zookeeper.hosts" -> zkhosts,
+                                                   "zookeeper.port" -> zkports,
+                                                   "zookeeper.broker.path" -> brokerPath ,
+                                                   "kafka.topic" -> topic,
+                                                   "zookeeper.consumer.connection" -> "x.x.x.x:2181",
+                                                   "zookeeper.consumer.path" -> "/consumer-path",
+                                                   "kafka.consumer.id" -> "consumer-id")
+
+    val props = new java.util.Properties()
+    kafkaProperties foreach { case (key,value) => props.put(key, value)}
+	
+	val tmp_stream = ReceiverLauncher.launch(ssc, props, numberOfReceivers)
+
+    tmp_stream.foreachRDD(rdd => println("\n\nNumber of records in this batch : " + rdd.count()))
+
+    ssc.start()
+    ssc.awaitTermination()
+	
+	Complete example is available here :
+	
+	examples/scala/LowLevelKafkaConsumer.scala is a sample scala code on how to use this utility.
+
+	
 Some Tuning Options
 ===================
 
@@ -92,7 +177,8 @@ These two parameter need to be carefully tuned keeping in mind your downstream p
 
 Once you change these settings, you need to rebuild kafka-spark-consumer.
 
-
+Note : If you need more finer control of your Receivers, you can directly use KafkaReceiver or KafkaRangeReceiver based on your use case like you want to consume from ONLY one Partition , or you want to consume from 
+SUBSET of partition . 
 
 Running Spark Kafka Consumer
 ===========================
