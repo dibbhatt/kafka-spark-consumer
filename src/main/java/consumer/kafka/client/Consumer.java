@@ -53,6 +53,9 @@ public class Consumer implements Serializable {
 		props.put("kafka.consumer.id", "valid_subpub");		
 		props.put("zookeeper.consumer.connection", "10.252.5.113:2182");
 		props.put("zookeeper.consumer.path", "/kafka-new");
+		//The number of partitions for the topic will be figured out automatically
+		//However, it can be manually specified by adding kafka.partitions.number property
+		//props.put("kafka.partitions.number", "100");
 		
 		SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver")
 				.set("spark.streaming.receiver.writeAheadLog.enable", "false");;

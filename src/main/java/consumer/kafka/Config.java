@@ -35,6 +35,7 @@ public class Config extends HashMap<String, Object> implements Serializable {
 	public static final String ZOOKEEPER_HOSTS = "zookeeper.hosts";
 	public static final String ZOOKEEPER_PORT = "zookeeper.port";
 	public static final String KAFKA_TOPIC = "kafka.topic";
+	public static final String KAFKA_PARTITIONS_NUMBER = "kafka.partitions.number";
 	public static final String ZOOKEEPER_BROKER_PATH = "zookeeper.broker.path";
 
 	/**
