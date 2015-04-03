@@ -183,8 +183,13 @@ public class PartitionManager implements Serializable {
 							msg.payload().get(payload);
 							mmeta.setPayload(payload);
 
-							if (msg.hasKey())
-								mmeta.setKey(msg.key().array());
+							if (msg.hasKey()){
+								
+								byte[] msgKey = new byte[msg.key().remaining()];
+								msg.key().get(msgKey);
+								mmeta.setKey(msgKey);
+							}
+								
 							
 							_dataBuffer.add(mmeta);
 
