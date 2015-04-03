@@ -189,10 +189,14 @@ public class PartitionManager implements Serializable {
 								msg.key().get(msgKey);
 								mmeta.setKey(msgKey);
 							}
+								
+							
 							_dataBuffer.add(mmeta);
+
 							LOG.info("Store for topic " + _topic
 									+ " for partition " + _partition.partition
 									+ " is : " + _lastEnquedOffset);
+
 						}
 					}
 				} catch (Exception e) {
