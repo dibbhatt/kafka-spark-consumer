@@ -211,7 +211,7 @@ public class PartitionManager implements Serializable {
 			}
 		}
 
-		if ((_lastEnquedOffset > _lastComittedOffset)
+		if ((_lastEnquedOffset >= _lastComittedOffset)
 				&& (_waitingToEmit.isEmpty())) {
 			if(_dataBuffer.size() > 0){
 				
