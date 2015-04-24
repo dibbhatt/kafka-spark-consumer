@@ -5,7 +5,7 @@ Scala example for the Lowlevel Kafka Consumer using SparkStreaming.
 ### How to Run
 Follow the below steps to get it running:
 ```sh
-* $ git clone https://github.com/akhld/kafka-spark-consumer.git
+* $ git clone https://github.com/dibbhatt/kafka-spark-consumer.git
 * $ cd kafka-spark-consumer
 * $ mvn install
 * $ cp target/kafka-spark-consumer-0.0.1-SNAPSHOT-jar-with-dependencies.jar examples/scala/lib/
