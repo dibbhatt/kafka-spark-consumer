@@ -98,7 +98,7 @@ Java Example
 		
 		int numberOfReceivers = 3;
 
-		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(jsc, props, numberOfReceivers);
+		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(jsc, props, numberOfReceivers,StorageLevel.MEMORY_ONLY());
 
 		unionStreams
 				.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
@@ -160,7 +160,7 @@ Scala Example
     val props = new java.util.Properties()
     kafkaProperties foreach { case (key,value) => props.put(key, value)}
 	
-	val tmp_stream = ReceiverLauncher.launch(ssc, props, numberOfReceivers)
+	val tmp_stream = ReceiverLauncher.launch(ssc, props, numberOfReceivers,StorageLevel.MEMORY_ONLY)
 
     tmp_stream.foreachRDD(rdd => println("\n\nNumber of records in this batch : " + rdd.count()))
 
