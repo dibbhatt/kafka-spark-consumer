@@ -41,6 +41,12 @@ public class KafkaReceiver extends Receiver<MessageAndMetadata> {
 		this._props = props;
 		_partitionId = partitionId;
 	}
+	
+	public KafkaReceiver(Properties props, int partitionId, StorageLevel storageLevel) {
+		super(storageLevel);
+		this._props = props;
+		_partitionId = partitionId;
+	}
 
 	@Override
 	public void onStart() {

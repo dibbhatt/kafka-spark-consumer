@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.StreamingContext;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
@@ -24,18 +25,18 @@ public class ReceiverLauncher implements Serializable{
 	private static String _topic;
 
 	
-	public static DStream<MessageAndMetadata> launch(StreamingContext ssc , Properties pros, int numberOfReceivers){
+	public static DStream<MessageAndMetadata> launch(StreamingContext ssc , Properties pros, int numberOfReceivers, StorageLevel storageLevel){
 		
 		JavaStreamingContext jsc = new JavaStreamingContext(ssc);
-		return createStream(jsc,pros,numberOfReceivers).dstream();
+		return createStream(jsc,pros,numberOfReceivers,storageLevel).dstream();
 	}
 	
-	public static JavaDStream<MessageAndMetadata> launch(JavaStreamingContext jsc , Properties pros, int numberOfReceivers){
+	public static JavaDStream<MessageAndMetadata> launch(JavaStreamingContext jsc , Properties pros, int numberOfReceivers , StorageLevel storageLevel){
 	
-		return createStream(jsc,pros,numberOfReceivers);
+		return createStream(jsc,pros,numberOfReceivers,storageLevel);
 	}
 	
-	private static JavaDStream<MessageAndMetadata> createStream(JavaStreamingContext jsc, Properties pros, int numberOfReceivers){
+	private static JavaDStream<MessageAndMetadata> createStream(JavaStreamingContext jsc, Properties pros, int numberOfReceivers,StorageLevel storageLevel){
 		
 		List<JavaDStream<MessageAndMetadata>> streamsList = new ArrayList<JavaDStream<MessageAndMetadata>>();
 		JavaDStream<MessageAndMetadata> unionStreams;
@@ -57,7 +58,7 @@ public class ReceiverLauncher implements Serializable{
 			
 			for (int i = 0; i < numberOfPartition; i++) {
 				
-				streamsList.add(jsc.receiverStream(new KafkaReceiver(pros, i)));
+				streamsList.add(jsc.receiverStream(new KafkaReceiver(pros, i,storageLevel)));
 
 			}
 		}else {
@@ -80,7 +81,7 @@ public class ReceiverLauncher implements Serializable{
 			
 			for (int i = 0; i < numberOfReceivers; i++) {
 
-				streamsList.add(jsc.receiverStream(new KafkaRangeReceiver(pros, rMap.get(i))));
+				streamsList.add(jsc.receiverStream(new KafkaRangeReceiver(pros, rMap.get(i),storageLevel)));
 			}
 		}
 

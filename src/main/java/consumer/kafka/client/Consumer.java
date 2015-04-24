@@ -24,6 +24,7 @@ import java.util.Properties;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.Duration;
 import org.apache.spark.streaming.Time;
 import org.apache.spark.streaming.api.java.JavaDStream;
@@ -46,29 +47,29 @@ public class Consumer implements Serializable {
 
 		
 		Properties props = new Properties();
-		props.put("zookeeper.hosts", "10.252.5.131");
-		props.put("zookeeper.port", "2181");
+		props.put("zookeeper.hosts", "10.252.5.113");
+		props.put("zookeeper.port", "2182");
 		props.put("zookeeper.broker.path", "/brokers");
-		props.put("kafka.topic", "valid_subpub");
-		props.put("kafka.consumer.id", "valid_subpub");		
+		props.put("kafka.topic", "load");
+		props.put("kafka.consumer.id", "12345");		
 		props.put("zookeeper.consumer.connection", "10.252.5.113:2182");
-		props.put("zookeeper.consumer.path", "/kafka-new");
-		//The number of partitions for the topic will be figured out automatically
-		//However, it can be manually specified by adding kafka.partitions.number property
-		//props.put("kafka.partitions.number", "100");
+		props.put("zookeeper.consumer.path", "/spark-kafka");
+		//Optional Properties
+		props.put("consumer.forcefromstart", "true");
+		props.put("consumer.fetchsizebytes", "1048576");
+		props.put("consumer.fillfreqms", "250");
 		
 		SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver")
 				.set("spark.streaming.receiver.writeAheadLog.enable", "false");;
 
 		JavaStreamingContext jsc = new JavaStreamingContext(_sparkConf,
-				new Duration(10000));
+				new Duration(1000));
 		
 		//Specify number of Receivers you need. 
-		//It should be less than or equal to number of Partitions of your topic
 		
 		int numberOfReceivers = 3;
 
-		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(jsc, props, numberOfReceivers);
+		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
 
 		unionStreams
 				.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
@@ -76,12 +77,15 @@ public class Consumer implements Serializable {
 					@Override
 					public Void call(JavaRDD<MessageAndMetadata> rdd,
 							Time time) throws Exception {
+						
+						rdd.collect();
+						
+						System.out.println(" Number of records in this batch " + rdd.count());
 
-						System.out.println("Number of records in this Batch is " + rdd.count());
 						return null;
 					}
 				});
-		
+				
 		jsc.start();
 		jsc.awaitTermination();
 	}

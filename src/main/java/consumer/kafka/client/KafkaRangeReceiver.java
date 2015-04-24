@@ -46,6 +46,12 @@ public class KafkaRangeReceiver extends Receiver<MessageAndMetadata> {
 		_partitionSet = partitionSet;
 	}
 
+	public KafkaRangeReceiver(Properties props, Set<Integer> partitionSet, StorageLevel storageLevel) {
+		super(storageLevel);
+		this._props = props;
+		_partitionSet = partitionSet;
+	}
+	
 	@Override
 	public void onStart() {
 		

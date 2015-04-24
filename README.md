@@ -61,10 +61,16 @@ and use below properties. ( See Java and Scala Code example on how to use these 
 	* zookeeper.consumer.path=/spark-kafka
 * Kafka Consumer ID. This ID will be used for accessing offset details in $zookeeper.consumer.path
 	* kafka.consumer.id=12345
-* Number of partitions for the topic. Optional. Only required if ZK is not reachable from the driver.
+	
+* OPTIONAL - Number of partitions for the topic. Only required if ZK is not reachable from the driver.
 	* kafka.partitions.number=100
-
-
+* OPTIONAL - Consumer Force From Start . Default Consumer Starts from Latest offset.
+	* consumer.forcefromstart=true
+* OPTIONAL - Consumer Fetch Size in Bytes . Default 512 Kilo Bytes ( 512 * 1024 Bytes ). See further explanation in Tuning Options section
+	* consumer.fetchsizebytes=1048576
+* OPTIONAL - Consumer Fill Frequence in MS . Default 200 milliseconds . See further explanation in Tuning Options section
+	* consumer.fillfreqms=250
+	
 Java Example
 ============
 
@@ -73,9 +79,13 @@ Java Example
 		props.put("zookeeper.port", "2181");
 		props.put("zookeeper.broker.path", "/brokers");
 		props.put("kafka.topic", "some-topic");
-		props.put("kafka.consumer.id", "consumer-id");		
+		props.put("kafka.consumer.id", "12345");		
 		props.put("zookeeper.consumer.connection", "x.x.x.x:2181");
 		props.put("zookeeper.consumer.path", "/consumer-path");
+		//Optional Properties
+		props.put("consumer.forcefromstart", "true");
+		props.put("consumer.fetchsizebytes", "1048576");
+		props.put("consumer.fillfreqms", "250");
 		
 		SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver")
 				.set("spark.streaming.receiver.writeAheadLog.enable", "false");;
@@ -141,7 +151,11 @@ Scala Example
                                                    "kafka.topic" -> topic,
                                                    "zookeeper.consumer.connection" -> "x.x.x.x:2181",
                                                    "zookeeper.consumer.path" -> "/consumer-path",
-                                                   "kafka.consumer.id" -> "consumer-id")
+                                                   "kafka.consumer.id" -> "12345",
+												   //optional properties
+												   "consumer.forcefromstart" -> "true",
+												   "consumer.fetchsizebytes" -> "1048576",
+												   "consumer.fillfreqms" -> "250")
 
     val props = new java.util.Properties()
     kafkaProperties foreach { case (key,value) => props.put(key, value)}
@@ -177,7 +191,7 @@ If you need higher rate, you can increase the _fetchSizeBytes , or if you need l
 
 These two parameter need to be carefully tuned keeping in mind your downstream processing rate and your memory settings.
 
-Once you change these settings, you need to rebuild kafka-spark-consumer.
+You can control these two paramater by consumer.fetchsizebytes and consumer.fillfreqms settings mentioned above.
 
 Note : If you need more finer control of your Receivers, you can directly use KafkaReceiver or KafkaRangeReceiver based on your use case like you want to consume from ONLY one Partition , or you want to consume from 
 SUBSET of partition . 
