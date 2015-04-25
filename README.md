@@ -40,7 +40,7 @@ If you want to use this Kafka-Spark-Consumer for you target client application, 
                 <dependency>
                         <groupId>kafka.spark.consumer</groupId>
                         <artifactId>kafka-spark-consumer</artifactId>
-                        <version>0.0.1-SNAPSHOT</version>
+                        <version>1.0.0</version>
                 </dependency>
 
 				
@@ -208,7 +208,7 @@ This will start the Spark Receiver and Fetch Kafka Messages for every partition 
 
 e.g. to Test Consumer provided in the package with your Kafka settings please modify it to point to your Kafka and use below command for spark submit 
 
-./bin/spark-submit --class consumer.kafka.client.Consumer --master spark://x.x.x.x:7077 --executor-memory 5G /<Path_To>/kafka-spark-consumer-0.0.1-SNAPSHOT-jar-with-dependencies.jar
+./bin/spark-submit --class consumer.kafka.client.Consumer --master spark://x.x.x.x:7077 --executor-memory 5G /<Path_To>/kafka-spark-consumer-1.0.0-jar-with-dependencies.jar
 
 
  
