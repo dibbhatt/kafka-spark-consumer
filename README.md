@@ -23,28 +23,72 @@ Please see Java or Scala code example on how to use this Low Level Consumer
 Kafka Receivers uses Zookeeper for storing the latest offset for individual partitions, which will help to recover in case of failure .
 
 
-Following are the instructions to build 
-========================================
+Following are the instructions for Manual build 
+===============================================
 
->git clone
+>git clone https://github.com/dibbhatt/kafka-spark-consumer
 
 >cd kafka-spark-consumer
 
 >mvn install
 
-Integrating Spark-Kafka-Consumer
-=================================
+And Use Below Dependency in your Maven 
 
-If you want to use this Kafka-Spark-Consumer for you target client application, include below dependency in your pom.xml
+		<dependency>
+				<groupId>kafka.spark.consumer</groupId>
+				<artifactId>kafka-spark-consumer</artifactId>
+				<version>1.0.0</version>
+		</dependency>
 
-                <dependency>
-                        <groupId>kafka.spark.consumer</groupId>
-                        <artifactId>kafka-spark-consumer</artifactId>
-                        <version>1.0.0</version>
-                </dependency>
+Accessing Kafka Spark Consumer from Spark Packages
+==================================================
 
+This Consumer is now part of Spark Packages : http://spark-packages.org/package/dibbhatt/kafka-spark-consumer
+
+Include this package in your Spark Applications using:
+
+* spark-shell, pyspark, or spark-submit
+
+> $SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.0
+
+
+* sbt
+
+If you use the sbt-spark-package plugin, in your sbt build file, add:
+
+spDependencies += "dibbhatt/kafka-spark-consumer:1.0.0"
+
+Otherwise,
+
+resolvers += "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven"
+		  
+libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.0"
+
+
+* Maven
+
+In your pom.xml, add:
+<dependencies>
+  <!-- list of dependencies -->
+  <dependency>
+    <groupId>dibbhatt</groupId>
+    <artifactId>kafka-spark-consumer</artifactId>
+    <version>1.0.0</version>
+  </dependency>
+</dependencies>
+<repositories>
+  <!-- list of other repositories -->
+  <repository>
+    <id>SparkPackagesRepo</id>
+    <url>http://dl.bintray.com/spark-packages/maven</url>
+  </repository>
+</repositories>
+
+		
+Spark Consumer Properties
+=========================
 				
-and use below properties. ( See Java and Scala Code example on how to use these properties)
+These are the Consumer Properties need to be used in your Driver Code. ( See Java and Scala Code example on how to use these properties)
 
 * Kafka ZK details from where messages will be pulled. Speficy ZK Host IP address
 	* zookeeper.hosts=host1,host2
