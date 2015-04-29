@@ -18,10 +18,10 @@
 
 package consumer.kafka.client;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.receiver.Receiver;
@@ -38,7 +38,7 @@ public class KafkaRangeReceiver extends Receiver<MessageAndMetadata> {
 	private Set<Integer> _partitionSet ;
 	private KafkaConsumer _kConsumer;
 	private transient Thread _consumerThread;
-	private transient ExecutorService _executorService;
+	private List<Thread> _threadList = new ArrayList<Thread>();
 
 	public KafkaRangeReceiver(Properties props, Set<Integer> partitionSet) {
 		super(StorageLevel.MEMORY_ONLY());
@@ -62,12 +62,13 @@ public class KafkaRangeReceiver extends Receiver<MessageAndMetadata> {
 	public void start() {
 		
 		// Start the thread that receives data over a connection
-		_executorService = Executors.newFixedThreadPool(_partitionSet.size());
 
+		_threadList.clear();
+		KafkaConfig kafkaConfig = new KafkaConfig(_props);
+		ZkState zkState = new ZkState(kafkaConfig);
+		
 		for(Integer partitionId : _partitionSet){
 			
-			KafkaConfig kafkaConfig = new KafkaConfig(_props);
-			ZkState zkState = new ZkState(kafkaConfig);
 			_kConsumer = new KafkaConsumer(kafkaConfig, zkState, this);
 			_kConsumer.open(partitionId);
 			
@@ -80,13 +81,17 @@ public class KafkaRangeReceiver extends Receiver<MessageAndMetadata> {
 			_consumerThread = new Thread(_kConsumer);
 			_consumerThread.setDaemon(true);
 			_consumerThread.setUncaughtExceptionHandler(eh);
-			_executorService.submit(_consumerThread);
+			_threadList.add(_consumerThread);
+			_consumerThread.start();	
 		}		
 	}
 
 	@Override
 	public void onStop() {
 
-		_executorService.shutdown();
+		for(Thread t : _threadList) {
+			if(t.isAlive())
+				t.interrupt();
+		}
 	}
 }

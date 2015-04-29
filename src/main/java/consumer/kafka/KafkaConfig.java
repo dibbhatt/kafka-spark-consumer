@@ -42,7 +42,7 @@ public class KafkaConfig implements Serializable {
 
 	public int _refreshFreqSecs = 100;
 	public int _socketTimeoutMs = 10000;
-
+	
 
 	public boolean _forceFromStart = false;
 	

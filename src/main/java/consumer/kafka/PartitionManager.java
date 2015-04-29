@@ -145,19 +145,12 @@ public class PartitionManager implements Serializable {
 	}
 
 	public void next() {
+
+		
 		if (_waitingToEmit.isEmpty()) {
-
-			if (_lastFillTime == null
-					|| (System.currentTimeMillis() - _lastFillTime) > _kafkaconfig._fillFreqMs) {
-				LOG.info("_waitingToEmit is empty for topic " + _topic
-						+ " for partition " + _partition.partition
-						+ ".. Filling it every "+ _kafkaconfig._fillFreqMs +" miliseconds");
-				fill();
-				_lastFillTime = System.currentTimeMillis();
-			}
 			
+			fill();
 		}
-
 		
 		
 		while (true) {
@@ -213,12 +206,13 @@ public class PartitionManager implements Serializable {
 
 		if ((_lastEnquedOffset >= _lastComittedOffset)
 				&& (_waitingToEmit.isEmpty())) {
-			if(_dataBuffer.size() > 0){
 				
 				try{
 					synchronized (_receiver) {
 						
-						_receiver.store(_dataBuffer.iterator());
+						if(!_dataBuffer.isEmpty())
+							_receiver.store(_dataBuffer.iterator());
+						
 						commit();
 						_dataBuffer.clear();
 					}
@@ -228,9 +222,7 @@ public class PartitionManager implements Serializable {
 					_emittedToOffset = _lastComittedOffset;
 					_dataBuffer.clear();
 					_receiver.reportError("Error While Store for Partition "+ _partition, ex);
-				}
-			}
-			
+				}			
 		}
 	}
 

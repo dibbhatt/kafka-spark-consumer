@@ -84,7 +84,7 @@ public class ZkState implements Serializable {
 		}
 	}
 
-	public void writeJSON(String path, Map<Object, Object> data) {
+	public synchronized void writeJSON(String path, Map<Object, Object> data) {
 		LOG.info("Writing " + path + " the data " + data.toString());
 		writeBytes(path,
 				JSONValue.toJSONString(data).getBytes(Charset.forName("UTF-8")));

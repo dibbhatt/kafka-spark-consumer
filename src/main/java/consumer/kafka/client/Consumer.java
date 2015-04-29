@@ -67,7 +67,7 @@ public class Consumer implements Serializable {
 		
 		//Specify number of Receivers you need. 
 		
-		int numberOfReceivers = 3;
+		int numberOfReceivers = 1;
 
 		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
 

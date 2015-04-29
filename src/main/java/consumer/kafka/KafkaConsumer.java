@@ -38,28 +38,27 @@ public class KafkaConsumer implements Runnable, Serializable {
 	public static final Logger LOG = LoggerFactory
 			.getLogger(KafkaConsumer.class);
 
-	KafkaConfig _kafkablurconfig;
+	KafkaConfig _kafkaconfig;
 	PartitionCoordinator _coordinator;
 	DynamicPartitionConnections _connections;
 	ZkState _state;
-	long _lastUpdateMs = 0;
+	long _lastConsumeTime = 0L;
 	int _currPartitionIndex = 0;
 	Receiver _receiver;
 
-	public KafkaConsumer(KafkaConfig blurConfig, ZkState zkState,
+	public KafkaConsumer(KafkaConfig config, ZkState zkState,
 			Receiver receiver) {
-		_kafkablurconfig = blurConfig;
+		_kafkaconfig = config;
 		_state = zkState;
 		_receiver = receiver;
-
 	}
 
 	public void open(int partitionId) {
 
 		_currPartitionIndex = partitionId;
-		_connections = new DynamicPartitionConnections(_kafkablurconfig,
-				new ZkBrokerReader(_kafkablurconfig, _state));
-		_coordinator = new ZkCoordinator(_connections, _kafkablurconfig,
+		_connections = new DynamicPartitionConnections(_kafkaconfig,
+				new ZkBrokerReader(_kafkaconfig, _state));
+		_coordinator = new ZkCoordinator(_connections, _kafkaconfig,
 				_state, partitionId, _receiver, true);
 
 	}
@@ -104,10 +103,16 @@ public class KafkaConsumer implements Runnable, Serializable {
 	public void run() {
 
 		try {
-
+			
 			while (!_receiver.isStopped()) {
 
-				this.createStream();
+				if ((System.currentTimeMillis() - _lastConsumeTime) > _kafkaconfig._fillFreqMs) {
+					this.createStream();
+					_lastConsumeTime = System.currentTimeMillis();
+				}else {
+					
+					Thread.sleep(_kafkaconfig._fillFreqMs);
+				}	
 			}
 
 		} catch (Throwable t) {
