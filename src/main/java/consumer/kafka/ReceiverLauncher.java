@@ -48,7 +48,9 @@ public class ReceiverLauncher implements Serializable{
 		
 		if(kafkaConfig._stopGracefully){
 			
-			addShutdownHook(jsc);
+			//available only in Spark 1.4.0. Commenting it for now .
+			
+			//addShutdownHook(jsc);
 		}
 		
 		
