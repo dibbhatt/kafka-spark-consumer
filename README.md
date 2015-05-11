@@ -117,7 +117,10 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
 	* consumer.fetchsizebytes=1048576
 * OPTIONAL - Consumer Fill Frequence in MS . Default 200 milliseconds . See further explanation in Tuning Options section
 	* consumer.fillfreqms=250
+* OPTIONAL - Consumer Gracefull Shutdown. Default is true
+	* consumer.stopgracefully=true
 	
+
 Java Example
 ============
 

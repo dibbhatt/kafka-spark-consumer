@@ -144,7 +144,7 @@ public class PartitionManager implements Serializable {
 
 	}
 
-	public void next() {
+	public void next() throws Exception {
 
 		
 		if (_waitingToEmit.isEmpty()) {
@@ -209,19 +209,29 @@ public class PartitionManager implements Serializable {
 				
 				try{
 					synchronized (_receiver) {
-						
-						if(!_dataBuffer.isEmpty())
+												
+						if(!_dataBuffer.isEmpty() && !_receiver.isStopped()){
+							
 							_receiver.store(_dataBuffer.iterator());
-						
-						commit();
-						_dataBuffer.clear();
+							commit();
+							_dataBuffer.clear();
+						}							
 					}
 					
 				}catch(Exception ex){
 					
 					_emittedToOffset = _lastComittedOffset;
 					_dataBuffer.clear();
-					_receiver.reportError("Error While Store for Partition "+ _partition, ex);
+					
+					if(ex instanceof InterruptedException) {
+						
+						throw ex;
+						
+					}else {
+						
+						_receiver.reportError("Error While Store for Partition "+ _partition, ex);
+
+					}
 				}			
 		}
 	}

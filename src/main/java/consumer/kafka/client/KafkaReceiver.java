@@ -64,8 +64,19 @@ public class KafkaReceiver extends Receiver<MessageAndMetadata> {
 		_kConsumer.open(_partitionId);
 		
 		Thread.UncaughtExceptionHandler eh = new Thread.UncaughtExceptionHandler() {
+			
 		    public void uncaughtException(Thread th, Throwable ex) {
-		    	restart("Restarting Receiver for Partition " + _partitionId , ex, 5000);
+		    	
+		    	if(ex instanceof InterruptedException ) {
+		    		
+		    		th.interrupt();
+		    		stop(" Stopping Receiver for partition " + _partitionId + " due to " + ex);
+		    		
+		    	}else {
+		    		
+		    		restart("Restarting Receiver for Partition " + _partitionId , ex, 5000);
+		    	}
+		    	
 		    }
 		};
 		

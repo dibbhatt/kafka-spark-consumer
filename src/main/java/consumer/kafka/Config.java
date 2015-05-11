@@ -51,6 +51,7 @@ public class Config extends HashMap<String, Object> implements Serializable {
 	public static final String CONSUMER_FORCE_FROM_START = "consumer.forcefromstart";
 	public static final String CONSUMER_FETCH_SIZE_BYTES = "consumer.fetchsizebytes";
 	public static final String CONSUMER_FILL_FREQ_MS = "consumer.fillfreqms";
+	public static final String CONSUMER_STOP_GRACEFULLY = "consumer.stopgracefully";
 
 
 

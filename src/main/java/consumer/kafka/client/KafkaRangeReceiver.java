@@ -73,8 +73,18 @@ public class KafkaRangeReceiver extends Receiver<MessageAndMetadata> {
 			_kConsumer.open(partitionId);
 			
 			Thread.UncaughtExceptionHandler eh = new Thread.UncaughtExceptionHandler() {
+				
 			    public void uncaughtException(Thread th, Throwable ex) {
-			    	restart("Restarting Range Receiver " , ex, 5000);
+			    	
+			    	if(ex instanceof InterruptedException ) {
+			    		
+			    		th.interrupt();
+			    		stop(" Stopping Receiver due to " + ex);
+			    		
+			    	}else {
+			    		
+			    		restart("Restarting Receiver " , ex, 5000);
+			    	}			    
 			    }
 			};
 			

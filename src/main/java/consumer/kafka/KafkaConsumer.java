@@ -68,7 +68,7 @@ public class KafkaConsumer implements Runnable, Serializable {
 		_connections.clear();
 	}
 
-	public void createStream() {
+	public void createStream() throws Exception {
 		try {
 			List<PartitionManager> managers = _coordinator
 					.getMyManagedPartitions();
@@ -84,9 +84,7 @@ public class KafkaConsumer implements Runnable, Serializable {
 					+ " encountered error during createStream : "
 					+ ex.getMessage());
 			ex.printStackTrace();
-			throw new RuntimeException("Partition " + _currPartitionIndex
-					+ " encountered error during createStream : "
-					+ ex.getMessage());
+			throw ex;
 		}
 
 	}
@@ -103,7 +101,7 @@ public class KafkaConsumer implements Runnable, Serializable {
 	public void run() {
 
 		try {
-			
+
 			while (!_receiver.isStopped()) {
 
 				if ((System.currentTimeMillis() - _lastConsumeTime) > _kafkaconfig._fillFreqMs) {
@@ -115,11 +113,14 @@ public class KafkaConsumer implements Runnable, Serializable {
 				}	
 			}
 
-		} catch (Throwable t) {
+		} catch (Exception ex) {
 							
-			this.close();			
-			throw new RuntimeException(t);
-
+			try {
+				this.close();	
+				throw ex;
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 
 	}

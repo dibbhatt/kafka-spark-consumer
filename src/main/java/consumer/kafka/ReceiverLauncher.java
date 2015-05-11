@@ -14,7 +14,10 @@ import org.apache.spark.streaming.StreamingContext;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
 import org.apache.spark.streaming.dstream.DStream;
+import org.apache.spark.util.Utils;
 
+import scala.Function0;
+import scala.runtime.BoxedUnit;
 import consumer.kafka.client.KafkaRangeReceiver;
 import consumer.kafka.client.KafkaReceiver;
 
@@ -41,13 +44,19 @@ public class ReceiverLauncher implements Serializable{
 		List<JavaDStream<MessageAndMetadata>> streamsList = new ArrayList<JavaDStream<MessageAndMetadata>>();
 		JavaDStream<MessageAndMetadata> unionStreams;
 		int numberOfPartition;
+		KafkaConfig kafkaConfig = new KafkaConfig(pros);
+		
+		if(kafkaConfig._stopGracefully){
+			
+			addShutdownHook(jsc);
+		}
+		
+		
 		String numberOfPartitionStr = (String) pros.getProperty(Config.KAFKA_PARTITIONS_NUMBER);
 		if (numberOfPartitionStr != null) {
 			numberOfPartition = Integer.parseInt(numberOfPartitionStr);
 		} else {
-			KafkaConfig kafkaConfig = new KafkaConfig(pros);
 			ZkState zkState = new ZkState(kafkaConfig);
-		
 			_zkPath = (String) kafkaConfig._stateConf.get(Config.ZOOKEEPER_BROKER_PATH);
 			_topic = (String) kafkaConfig._stateConf.get(Config.KAFKA_TOPIC);
 			numberOfPartition = getNumPartitions(zkState);
@@ -98,6 +107,66 @@ public class ReceiverLauncher implements Serializable{
 		return unionStreams;
 	}
 	
+	private static void addShutdownHook(final JavaStreamingContext jsc) {
+
+		Utils.addShutdownHook(150, new Function0<BoxedUnit>() {
+			
+			@Override
+			public BoxedUnit apply() {
+				return null;
+			}
+
+			@Override
+			public byte apply$mcB$sp() {
+				return 0;
+			}
+
+			@Override
+			public char apply$mcC$sp() {
+				return 0;
+			}
+
+			@Override
+			public double apply$mcD$sp() {
+				return 0;
+			}
+
+			@Override
+			public float apply$mcF$sp() {
+				return 0;
+			}
+
+			@Override
+			public int apply$mcI$sp() {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+
+			@Override
+			public long apply$mcJ$sp() {
+				return 0;
+			}
+
+			@Override
+			public short apply$mcS$sp() {
+				return 0;
+			}
+
+			@Override
+			public void apply$mcV$sp() {
+				
+				jsc.stop(false, true);
+				
+			}
+
+			@Override
+			public boolean apply$mcZ$sp() {
+				// TODO Auto-generated method stub
+				return false;
+			}
+		});
+	}
+
 	private static int getNumPartitions(ZkState zkState) {
 		try {
 			String topicBrokersPath = partitionPath();

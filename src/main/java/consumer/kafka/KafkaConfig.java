@@ -46,6 +46,8 @@ public class KafkaConfig implements Serializable {
 
 	public boolean _forceFromStart = false;
 	
+	public boolean _stopGracefully = true;
+	
 	public long _startOffsetTime = kafka.api.OffsetRequest.EarliestTime();
 	public boolean _useStartOffsetTimeIfOffsetOutOfRange = true;
 
@@ -73,6 +75,8 @@ public class KafkaConfig implements Serializable {
 		if(props.getProperty("consumer.fillfreqms") != null )
 			_fillFreqMs = Integer.parseInt(props.getProperty("consumer.fillfreqms"));
 		
+		if(props.getProperty("consumer.stopgracefully") != null )
+			_stopGracefully = Boolean.parseBoolean(props.getProperty("consumer.stopgracefully"));
 		
 		_stateConf = new HashMap();
 		List<String> zkServers = new ArrayList<String>(Arrays.asList(zkHost.split(",")));
