@@ -109,6 +109,9 @@ public class ReceiverLauncher implements Serializable{
 		return unionStreams;
 	}
 	
+	/*
+	 * Commenting addShutdownHook as this will be available in Spark 1.4.0
+	 * 
 	private static void addShutdownHook(final JavaStreamingContext jsc) {
 
 		Utils.addShutdownHook(150, new Function0<BoxedUnit>() {
@@ -168,6 +171,8 @@ public class ReceiverLauncher implements Serializable{
 			}
 		});
 	}
+	
+	*/
 
 	private static int getNumPartitions(ZkState zkState) {
 		try {
