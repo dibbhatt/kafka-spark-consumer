@@ -37,7 +37,7 @@ And Use Below Dependency in your Maven
 		<dependency>
 				<groupId>kafka.spark.consumer</groupId>
 				<artifactId>kafka-spark-consumer</artifactId>
-				<version>1.0.1</version>
+				<version>1.0.2</version>
 		</dependency>
 
 Accessing from Spark Packages
@@ -51,20 +51,20 @@ Include this package in your Spark Applications using:
 
 * spark-shell, pyspark, or spark-submit
 
-	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.1
+	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.2
 
 
 * sbt
 
 If you use the sbt-spark-package plugin, in your sbt build file, add:
 
-	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.1"
+	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.2"
 
 Otherwise,
 
 	resolvers += "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven"
 			  
-	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.1"
+	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.2"
 
 
 * Maven
@@ -76,7 +76,7 @@ In your pom.xml, add:
 	  <dependency>
 		<groupId>dibbhatt</groupId>
 		<artifactId>kafka-spark-consumer</artifactId>
-		<version>1.0.1</version>
+		<version>1.0.2</version>
 	  </dependency>
 	</dependencies>
 	<repositories>
@@ -182,7 +182,7 @@ Scala Example
     val sc = new SparkContext(conf)
 
     //Might want to uncomment and add the jars if you are running on standalone mode.
-    //sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.1-jar-with-dependencies.jar")
+    //sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.2-jar-with-dependencies.jar")
 	
     val ssc = new StreamingContext(sc, Seconds(10))
 
@@ -258,7 +258,7 @@ This will start the Spark Receiver and Fetch Kafka Messages for every partition 
 
 e.g. to Test Consumer provided in the package with your Kafka settings please modify it to point to your Kafka and use below command for spark submit 
 
-./bin/spark-submit --class consumer.kafka.client.Consumer --master spark://x.x.x.x:7077 --executor-memory 5G /<Path_To>/kafka-spark-consumer-1.0.1-jar-with-dependencies.jar
+./bin/spark-submit --class consumer.kafka.client.Consumer --master spark://x.x.x.x:7077 --executor-memory 5G /<Path_To>/kafka-spark-consumer-1.0.2-jar-with-dependencies.jar
 
 
  
