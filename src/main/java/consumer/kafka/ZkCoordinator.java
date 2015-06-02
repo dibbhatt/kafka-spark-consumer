@@ -92,6 +92,15 @@ public class ZkCoordinator implements PartitionCoordinator, Serializable {
 				}
 			}
 
+			if(mine.size() == 0 ) {
+				
+				LOG.warn("Some issue getting Partition details.. Keep Refresing after few seconds ..");
+				Thread.sleep(10000);
+				_managers.clear();
+				_cachedList.clear();
+				refresh();
+			}
+			
 			Set<Partition> curr = _managers.keySet();
 			Set<Partition> newPartitions = new HashSet<Partition>(mine);
 			newPartitions.removeAll(curr);

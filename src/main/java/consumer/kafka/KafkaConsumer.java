@@ -72,7 +72,13 @@ public class KafkaConsumer implements Runnable, Serializable {
 		try {
 			List<PartitionManager> managers = _coordinator
 					.getMyManagedPartitions();
-			managers.get(0).next();
+			if(managers.size() == 0) {
+				 LOG.warn("Some issue getting Partition details.. Refreshing Corodinator..");
+				_coordinator.refresh();	
+			}else {
+				
+				managers.get(0).next();
+			}
 		}catch (FailedFetchException fe){
 			
 			fe.printStackTrace();
