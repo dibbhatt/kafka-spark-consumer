@@ -25,7 +25,6 @@
 package consumer.kafka;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Map;
 
@@ -40,6 +39,8 @@ import org.apache.spark.streaming.receiver.Receiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import scala.collection.mutable.ArrayBuffer;
+
 import com.google.common.collect.ImmutableMap;
 
 public class PartitionManager implements Serializable {
@@ -50,7 +51,7 @@ public class PartitionManager implements Serializable {
 	Long _lastComittedOffset;
 	Long _lastEnquedOffset;
 	LinkedList<MessageAndOffset> _waitingToEmit = new LinkedList<MessageAndOffset>();
-	ArrayList<MessageAndMetadata> _dataBuffer = new ArrayList<MessageAndMetadata>();
+	ArrayBuffer<MessageAndMetadata> _arrayBuffer = new ArrayBuffer<MessageAndMetadata>();
 	Partition _partition;
 	KafkaConfig _kafkaconfig;
 	String _ConsumerId;
@@ -182,9 +183,7 @@ public class PartitionManager implements Serializable {
 								msg.key().get(msgKey);
 								mmeta.setKey(msgKey);
 							}
-								
-							
-							_dataBuffer.add(mmeta);
+							_arrayBuffer.$plus$eq(mmeta);
 
 							LOG.info("Store for topic " + _topic
 									+ " for partition " + _partition.partition
@@ -210,18 +209,18 @@ public class PartitionManager implements Serializable {
 				try{
 					synchronized (_receiver) {
 												
-						if(!_dataBuffer.isEmpty() && !_receiver.isStopped()){
+						if(!_arrayBuffer.isEmpty() && !_receiver.isStopped()){
 							
-							_receiver.store(_dataBuffer.iterator());
+							_receiver.store(_arrayBuffer);
 							commit();
-							_dataBuffer.clear();
+							_arrayBuffer.clear();
 						}							
 					}
 					
 				}catch(Exception ex){
 					
 					_emittedToOffset = _lastComittedOffset;
-					_dataBuffer.clear();
+					_arrayBuffer.clear();
 					
 					if(ex instanceof InterruptedException) {
 						
