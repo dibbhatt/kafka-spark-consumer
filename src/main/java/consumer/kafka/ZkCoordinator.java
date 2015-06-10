@@ -92,14 +92,14 @@ public class ZkCoordinator implements PartitionCoordinator, Serializable {
 				}
 			}
 
-			if(mine.size() == 0 ) {
-				
+			if (mine.size() == 0) {
+
 				LOG.warn("Some issue getting Partition details.. Patrition Manager size Zero");
 				_managers.clear();
 				_cachedList.clear();
 				return;
-			}else {
-				
+			} else {
+
 				Set<Partition> curr = _managers.keySet();
 				Set<Partition> newPartitions = new HashSet<Partition>(mine);
 				newPartitions.removeAll(curr);
@@ -118,14 +118,16 @@ public class ZkCoordinator implements PartitionCoordinator, Serializable {
 
 				for (Partition id : newPartitions) {
 
-					PartitionManager man = new PartitionManager(_connections,
+					PartitionManager man = new PartitionManager(
+							_connections,
 							new ZkState((String) _config._stateConf
 									.get(Config.ZOOKEEPER_CONSUMER_CONNECTION)),
 							_kafkaconfig, id, _receiver, _restart);
 					_managers.put(id, man);
 				}
-				
-				_cachedList = new ArrayList<PartitionManager>(_managers.values());
+
+				_cachedList = new ArrayList<PartitionManager>(
+						_managers.values());
 				LOG.info("Finished refreshing");
 			}
 

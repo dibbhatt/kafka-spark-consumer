@@ -36,7 +36,7 @@ import consumer.kafka.ReceiverLauncher;
 public class Consumer implements Serializable {
 
 	private static final long serialVersionUID = 4332618245650072140L;
-	
+
 	public void start() throws InstantiationException, IllegalAccessException,
 			ClassNotFoundException {
 
@@ -45,47 +45,49 @@ public class Consumer implements Serializable {
 
 	private void run() {
 
-		
 		Properties props = new Properties();
 		props.put("zookeeper.hosts", "10.252.5.113");
 		props.put("zookeeper.port", "2182");
 		props.put("zookeeper.broker.path", "/brokers");
 		props.put("kafka.topic", "load");
-		props.put("kafka.consumer.id", "12345");		
+		props.put("kafka.consumer.id", "12345");
 		props.put("zookeeper.consumer.connection", "10.252.5.113:2182");
 		props.put("zookeeper.consumer.path", "/spark-kafka");
-		//Optional Properties
+		// Optional Properties
 		props.put("consumer.forcefromstart", "true");
 		props.put("consumer.fetchsizebytes", "1048576");
 		props.put("consumer.fillfreqms", "250");
-		
-		SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver")
-				.set("spark.streaming.receiver.writeAheadLog.enable", "false");;
+
+		SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver").set(
+				"spark.streaming.receiver.writeAheadLog.enable", "false");
+		;
 
 		JavaStreamingContext jsc = new JavaStreamingContext(_sparkConf,
 				new Duration(1000));
-		
-		//Specify number of Receivers you need. 
-		
+
+		// Specify number of Receivers you need.
+
 		int numberOfReceivers = 1;
 
-		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
+		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(
+				jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
 
 		unionStreams
 				.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
 
 					@Override
-					public Void call(JavaRDD<MessageAndMetadata> rdd,
-							Time time) throws Exception {
-						
+					public Void call(JavaRDD<MessageAndMetadata> rdd, Time time)
+							throws Exception {
+
 						rdd.collect();
-						
-						System.out.println(" Number of records in this batch " + rdd.count());
+
+						System.out.println(" Number of records in this batch "
+								+ rdd.count());
 
 						return null;
 					}
 				});
-				
+
 		jsc.start();
 		jsc.awaitTermination();
 	}

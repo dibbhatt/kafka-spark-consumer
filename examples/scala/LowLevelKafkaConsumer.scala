@@ -28,7 +28,7 @@ object LowLevelKafkaConsumer {
     val sc = new SparkContext(conf)
 
     //Might want to uncomment and add the jars if you are running on standalone mode.
-    sc.addJar("/home/gittest/kafka-spark-consumer/target/kafka-spark-consumer-1.0.1-jar-with-dependencies.jar")
+    sc.addJar("/home/gittest/kafka-spark-consumer/target/kafka-spark-consumer-1.0.3-jar-with-dependencies.jar")
     val ssc = new StreamingContext(sc, Seconds(1))
 
     val topic = "load"

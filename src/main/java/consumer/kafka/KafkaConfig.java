@@ -35,19 +35,17 @@ import java.util.Properties;
 public class KafkaConfig implements Serializable {
 
 	public int _fetchSizeBytes = 512 * 1024;
-	public int _fillFreqMs = 200 ;
+	public int _fillFreqMs = 200;
 
-	public int _bufferSizeBytes =_fetchSizeBytes ;
-
+	public int _bufferSizeBytes = _fetchSizeBytes;
 
 	public int _refreshFreqSecs = 100;
 	public int _socketTimeoutMs = 10000;
-	
 
 	public boolean _forceFromStart = false;
-	
+
 	public boolean _stopGracefully = true;
-	
+
 	public long _startOffsetTime = kafka.api.OffsetRequest.EarliestTime();
 	public boolean _useStartOffsetTimeIfOffsetOutOfRange = true;
 
@@ -62,31 +60,38 @@ public class KafkaConfig implements Serializable {
 		String brokerZkPath = props.getProperty("zookeeper.broker.path");
 
 		String consumerZkPath = props.getProperty("zookeeper.consumer.path");
-		String consumerConnection = props.getProperty("zookeeper.consumer.connection");
+		String consumerConnection = props
+				.getProperty("zookeeper.consumer.connection");
 		String consumerId = props.getProperty("kafka.consumer.id");
 		String decoderClass = props.getProperty("target.indexer.class");
-		
-		if(props.getProperty("consumer.forcefromstart") != null )
-			_forceFromStart = Boolean.parseBoolean(props.getProperty("consumer.forcefromstart"));
-		
-		if(props.getProperty("consumer.fetchsizebytes") != null )
-			_fetchSizeBytes = Integer.parseInt(props.getProperty("consumer.fetchsizebytes"));
-		
-		if(props.getProperty("consumer.fillfreqms") != null )
-			_fillFreqMs = Integer.parseInt(props.getProperty("consumer.fillfreqms"));
-		
-		if(props.getProperty("consumer.stopgracefully") != null )
-			_stopGracefully = Boolean.parseBoolean(props.getProperty("consumer.stopgracefully"));
-		
+
+		if (props.getProperty("consumer.forcefromstart") != null)
+			_forceFromStart = Boolean.parseBoolean(props
+					.getProperty("consumer.forcefromstart"));
+
+		if (props.getProperty("consumer.fetchsizebytes") != null)
+			_fetchSizeBytes = Integer.parseInt(props
+					.getProperty("consumer.fetchsizebytes"));
+
+		if (props.getProperty("consumer.fillfreqms") != null)
+			_fillFreqMs = Integer.parseInt(props
+					.getProperty("consumer.fillfreqms"));
+
+		if (props.getProperty("consumer.stopgracefully") != null)
+			_stopGracefully = Boolean.parseBoolean(props
+					.getProperty("consumer.stopgracefully"));
+
 		_stateConf = new HashMap();
-		List<String> zkServers = new ArrayList<String>(Arrays.asList(zkHost.split(",")));
+		List<String> zkServers = new ArrayList<String>(Arrays.asList(zkHost
+				.split(",")));
 		_stateConf.put(Config.ZOOKEEPER_HOSTS, zkServers);
 		_stateConf.put(Config.ZOOKEEPER_PORT, zkPort);
 		_stateConf.put(Config.KAFKA_TOPIC, kafkaTopic);
 		_stateConf.put(Config.ZOOKEEPER_BROKER_PATH, brokerZkPath);
 
 		_stateConf.put(Config.ZOOKEEPER_CONSUMER_PATH, consumerZkPath);
-		_stateConf.put(Config.ZOOKEEPER_CONSUMER_CONNECTION, consumerConnection);
+		_stateConf
+				.put(Config.ZOOKEEPER_CONSUMER_CONNECTION, consumerConnection);
 		_stateConf.put(Config.KAFKA_CONSUMER_ID, consumerId);
 
 	}

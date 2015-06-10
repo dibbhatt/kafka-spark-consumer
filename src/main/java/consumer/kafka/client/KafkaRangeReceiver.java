@@ -35,7 +35,7 @@ public class KafkaRangeReceiver extends Receiver<MessageAndMetadata> {
 
 	private static final long serialVersionUID = -4434734456026616121L;
 	private final Properties _props;
-	private Set<Integer> _partitionSet ;
+	private Set<Integer> _partitionSet;
 	private KafkaConsumer _kConsumer;
 	private transient Thread _consumerThread;
 	private List<Thread> _threadList = new ArrayList<Thread>();
@@ -46,61 +46,62 @@ public class KafkaRangeReceiver extends Receiver<MessageAndMetadata> {
 		_partitionSet = partitionSet;
 	}
 
-	public KafkaRangeReceiver(Properties props, Set<Integer> partitionSet, StorageLevel storageLevel) {
+	public KafkaRangeReceiver(Properties props, Set<Integer> partitionSet,
+			StorageLevel storageLevel) {
 		super(storageLevel);
 		this._props = props;
 		_partitionSet = partitionSet;
 	}
-	
+
 	@Override
 	public void onStart() {
-		
+
 		start();
 
 	}
 
 	public void start() {
-		
+
 		// Start the thread that receives data over a connection
 
 		_threadList.clear();
 		KafkaConfig kafkaConfig = new KafkaConfig(_props);
 		ZkState zkState = new ZkState(kafkaConfig);
-		
-		for(Integer partitionId : _partitionSet){
-			
+
+		for (Integer partitionId : _partitionSet) {
+
 			_kConsumer = new KafkaConsumer(kafkaConfig, zkState, this);
 			_kConsumer.open(partitionId);
-			
+
 			Thread.UncaughtExceptionHandler eh = new Thread.UncaughtExceptionHandler() {
-				
-			    public void uncaughtException(Thread th, Throwable ex) {
-			    	
-			    	if(ex instanceof InterruptedException ) {
-			    		
-			    		th.interrupt();
-			    		stop(" Stopping Receiver due to " + ex);
-			    		
-			    	}else {
-			    		
-			    		restart("Restarting Receiver " , ex, 5000);
-			    	}			    
-			    }
+
+				public void uncaughtException(Thread th, Throwable ex) {
+
+					if (ex instanceof InterruptedException) {
+
+						th.interrupt();
+						stop(" Stopping Receiver due to " + ex);
+
+					} else {
+
+						restart("Restarting Receiver ", ex, 5000);
+					}
+				}
 			};
-			
+
 			_consumerThread = new Thread(_kConsumer);
 			_consumerThread.setDaemon(true);
 			_consumerThread.setUncaughtExceptionHandler(eh);
 			_threadList.add(_consumerThread);
-			_consumerThread.start();	
-		}		
+			_consumerThread.start();
+		}
 	}
 
 	@Override
 	public void onStop() {
 
-		for(Thread t : _threadList) {
-			if(t.isAlive())
+		for (Thread t : _threadList) {
+			if (t.isAlive())
 				t.interrupt();
 		}
 	}

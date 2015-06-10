@@ -43,7 +43,7 @@ public class Config extends HashMap<String, Object> implements Serializable {
 	public static final String ZOOKEEPER_CONSUMER_PATH = "zookeeper.consumer.path";
 	public static final String ZOOKEEPER_CONSUMER_CONNECTION = "zookeeper.consumer.connection";
 	public static final String KAFKA_CONSUMER_ID = "kafka.consumer.id";
-	
+
 	/**
 	 * Optional Configurations
 	 */
@@ -52,8 +52,5 @@ public class Config extends HashMap<String, Object> implements Serializable {
 	public static final String CONSUMER_FETCH_SIZE_BYTES = "consumer.fetchsizebytes";
 	public static final String CONSUMER_FILL_FREQ_MS = "consumer.fillfreqms";
 	public static final String CONSUMER_STOP_GRACEFULLY = "consumer.stopgracefully";
-
-
-
 
 }

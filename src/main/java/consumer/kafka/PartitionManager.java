@@ -147,13 +147,11 @@ public class PartitionManager implements Serializable {
 
 	public void next() throws Exception {
 
-		
 		if (_waitingToEmit.isEmpty()) {
-			
+
 			fill();
 		}
-		
-		
+
 		while (true) {
 			MessageAndOffset msgAndOffset = _waitingToEmit.pollFirst();
 
@@ -177,8 +175,8 @@ public class PartitionManager implements Serializable {
 							msg.payload().get(payload);
 							mmeta.setPayload(payload);
 
-							if (msg.hasKey()){
-								
+							if (msg.hasKey()) {
+
 								byte[] msgKey = new byte[msg.key().remaining()];
 								msg.key().get(msgKey);
 								mmeta.setKey(msgKey);
@@ -205,33 +203,34 @@ public class PartitionManager implements Serializable {
 
 		if ((_lastEnquedOffset >= _lastComittedOffset)
 				&& (_waitingToEmit.isEmpty())) {
-				
-				try{
-					synchronized (_receiver) {
-												
-						if(!_arrayBuffer.isEmpty() && !_receiver.isStopped()){
-							
-							_receiver.store(_arrayBuffer);
-							commit();
-							_arrayBuffer.clear();
-						}							
-					}
-					
-				}catch(Exception ex){
-					
-					_emittedToOffset = _lastComittedOffset;
-					_arrayBuffer.clear();
-					
-					if(ex instanceof InterruptedException) {
-						
-						throw ex;
-						
-					}else {
-						
-						_receiver.reportError("Error While Store for Partition "+ _partition, ex);
 
+			try {
+				synchronized (_receiver) {
+
+					if (!_arrayBuffer.isEmpty() && !_receiver.isStopped()) {
+
+						_receiver.store(_arrayBuffer);
+						commit();
+						_arrayBuffer.clear();
 					}
-				}			
+				}
+
+			} catch (Exception ex) {
+
+				_emittedToOffset = _lastComittedOffset;
+				_arrayBuffer.clear();
+
+				if (ex instanceof InterruptedException) {
+
+					throw ex;
+
+				} else {
+
+					_receiver.reportError("Error While Store for Partition "
+							+ _partition, ex);
+
+				}
+			}
 		}
 	}
 

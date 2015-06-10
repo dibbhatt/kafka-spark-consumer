@@ -8,7 +8,7 @@ Follow the below steps to get it running:
 * $ git clone https://github.com/dibbhatt/kafka-spark-consumer.git
 * $ cd kafka-spark-consumer
 * $ mvn install
-* $ cp target/kafka-spark-consumer-0.0.1-SNAPSHOT-jar-with-dependencies.jar examples/scala/lib/
+* $ cp target/kafka-spark-consumer-1.0.3-jar-with-dependencies.jar examples/scala/lib/
 * $ cd examples/scala/
 * $ sbt package
 * $ sbt run

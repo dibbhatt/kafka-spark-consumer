@@ -93,11 +93,11 @@ public class KafkaUtils {
 		try {
 			fetchResponse = consumer.fetch(fetchRequest);
 		} catch (Exception e) {
-			if (e instanceof ConnectException ||
-                    e instanceof SocketTimeoutException ||
-                    e instanceof IOException ||
-                    e instanceof UnresolvedAddressException) {
-				
+			if (e instanceof ConnectException
+					|| e instanceof SocketTimeoutException
+					|| e instanceof IOException
+					|| e instanceof UnresolvedAddressException) {
+
 				LOG.warn("Network error when fetching messages:", e);
 				throw new FailedFetchException(e);
 			} else {

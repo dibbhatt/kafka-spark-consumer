@@ -41,8 +41,9 @@ public class KafkaReceiver extends Receiver<MessageAndMetadata> {
 		this._props = props;
 		_partitionId = partitionId;
 	}
-	
-	public KafkaReceiver(Properties props, int partitionId, StorageLevel storageLevel) {
+
+	public KafkaReceiver(Properties props, int partitionId,
+			StorageLevel storageLevel) {
 		super(storageLevel);
 		this._props = props;
 		_partitionId = partitionId;
@@ -50,46 +51,48 @@ public class KafkaReceiver extends Receiver<MessageAndMetadata> {
 
 	@Override
 	public void onStart() {
-		
+
 		start();
 
 	}
 
 	public void start() {
-		
+
 		// Start the thread that receives data over a connection
 		KafkaConfig kafkaConfig = new KafkaConfig(_props);
 		ZkState zkState = new ZkState(kafkaConfig);
 		_kConsumer = new KafkaConsumer(kafkaConfig, zkState, this);
 		_kConsumer.open(_partitionId);
-		
+
 		Thread.UncaughtExceptionHandler eh = new Thread.UncaughtExceptionHandler() {
-			
-		    public void uncaughtException(Thread th, Throwable ex) {
-		    	
-		    	if(ex instanceof InterruptedException ) {
-		    		
-		    		th.interrupt();
-		    		stop(" Stopping Receiver for partition " + _partitionId + " due to " + ex);
-		    		
-		    	}else {
-		    		
-		    		restart("Restarting Receiver for Partition " + _partitionId , ex, 5000);
-		    	}
-		    	
-		    }
+
+			public void uncaughtException(Thread th, Throwable ex) {
+
+				if (ex instanceof InterruptedException) {
+
+					th.interrupt();
+					stop(" Stopping Receiver for partition " + _partitionId
+							+ " due to " + ex);
+
+				} else {
+
+					restart("Restarting Receiver for Partition " + _partitionId,
+							ex, 5000);
+				}
+
+			}
 		};
-		
+
 		_consumerThread = new Thread(_kConsumer);
 		_consumerThread.setDaemon(true);
 		_consumerThread.setUncaughtExceptionHandler(eh);
-		_consumerThread.start();		
+		_consumerThread.start();
 	}
 
 	@Override
 	public void onStop() {
 
-		if(_consumerThread.isAlive())
+		if (_consumerThread.isAlive())
 			_consumerThread.interrupt();
 	}
 }

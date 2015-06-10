@@ -46,8 +46,7 @@ public class KafkaConsumer implements Runnable, Serializable {
 	int _currPartitionIndex = 0;
 	Receiver _receiver;
 
-	public KafkaConsumer(KafkaConfig config, ZkState zkState,
-			Receiver receiver) {
+	public KafkaConsumer(KafkaConfig config, ZkState zkState, Receiver receiver) {
 		_kafkaconfig = config;
 		_state = zkState;
 		_receiver = receiver;
@@ -58,8 +57,8 @@ public class KafkaConsumer implements Runnable, Serializable {
 		_currPartitionIndex = partitionId;
 		_connections = new DynamicPartitionConnections(_kafkaconfig,
 				new ZkBrokerReader(_kafkaconfig, _state));
-		_coordinator = new ZkCoordinator(_connections, _kafkaconfig,
-				_state, partitionId, _receiver, true);
+		_coordinator = new ZkCoordinator(_connections, _kafkaconfig, _state,
+				partitionId, _receiver, true);
 
 	}
 
@@ -72,20 +71,20 @@ public class KafkaConsumer implements Runnable, Serializable {
 		try {
 			List<PartitionManager> managers = _coordinator
 					.getMyManagedPartitions();
-			if(managers.size() == 0) {
-				 LOG.warn("Some issue getting Partition details.. Refreshing Corodinator..");
-				_coordinator.refresh();	
-			}else {
-				
+			if (managers.size() == 0) {
+				LOG.warn("Some issue getting Partition details.. Refreshing Corodinator..");
+				_coordinator.refresh();
+			} else {
+
 				managers.get(0).next();
 			}
-		}catch (FailedFetchException fe){
-			
+		} catch (FailedFetchException fe) {
+
 			fe.printStackTrace();
 			LOG.warn("Fetch failed. Refresing Coordinator..", fe);
-			_coordinator.refresh();		
-			
-		}catch (Exception ex) {
+			_coordinator.refresh();
+
+		} catch (Exception ex) {
 			LOG.error("Partition " + _currPartitionIndex
 					+ " encountered error during createStream : "
 					+ ex.getMessage());
@@ -113,16 +112,16 @@ public class KafkaConsumer implements Runnable, Serializable {
 				if ((System.currentTimeMillis() - _lastConsumeTime) > _kafkaconfig._fillFreqMs) {
 					this.createStream();
 					_lastConsumeTime = System.currentTimeMillis();
-				}else {
-					
+				} else {
+
 					Thread.sleep(_kafkaconfig._fillFreqMs);
-				}	
+				}
 			}
 
 		} catch (Exception ex) {
-							
+
 			try {
-				this.close();	
+				this.close();
 				throw ex;
 			} catch (Exception e) {
 				e.printStackTrace();
