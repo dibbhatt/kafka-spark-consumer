@@ -71,7 +71,7 @@ public class KafkaConsumer implements Runnable, Serializable {
 		try {
 			List<PartitionManager> managers = _coordinator
 					.getMyManagedPartitions();
-			if (managers.size() == 0) {
+			if (managers == null || managers.size() == 0) {
 				LOG.warn("Some issue getting Partition details.. Refreshing Corodinator..");
 				_coordinator.refresh();
 			} else {

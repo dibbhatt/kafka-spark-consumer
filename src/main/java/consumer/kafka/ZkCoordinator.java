@@ -96,7 +96,10 @@ public class ZkCoordinator implements PartitionCoordinator, Serializable {
 
 				LOG.warn("Some issue getting Partition details.. Patrition Manager size Zero");
 				_managers.clear();
-				_cachedList.clear();
+				if(_cachedList != null){
+					_cachedList.clear();
+				}
+				
 				return;
 			} else {
 
