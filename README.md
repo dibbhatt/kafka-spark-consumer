@@ -275,17 +275,17 @@ You can enable the BackPressure meachanism by setting *consumer.backpressure.ena
 
 The Default PID settings is as below.
 
--Proportional = 0.75
--Integral = 0.15
--Derivative = 0
+* Proportional = 0.75
+* Integral = 0.15
+* Derivative = 0
 
 If you increase any or all of these , your damping factor will be higher. So if you want to lower the Consumer rate more than what is being achived by applying the default PID rate , you can increase these values.
 
 You can control the PID values by settings the Properties below.
 
--*consumer.backpressure.proportional*
--*consumer.backpressure.integral*
--*consumer.backpressure.derivative*
+* consumer.backpressure.proportional
+* consumer.backpressure.integral
+* consumer.backpressure.derivative
 
 
 # Running Spark Kafka Consumer
