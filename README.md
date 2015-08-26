@@ -16,11 +16,13 @@ e.g. if you have 100 partitions of a Topic, and you need 20 Receivers, each Rece
 
 Number of Receivers should be less than or equal to the number of Partitions for Kafka Topic.
 
-In your driver code , you can launch the Receivers by calling ReceiverLauncher.launch
+In your driver code , you can launch the Receivers by calling **ReceiverLauncher.launch**
 
 Please see Java or Scala code example on how to use this Low Level Consumer
 
-Kafka Receivers uses Zookeeper for storing the latest offset for individual partitions, which will help to recover in case of failure .
+- **This Consumer uses Zookeeper for storing the latest offset for individual partitions, which will help to recover in case of failure**
+- **This Consumer has implemented PID (Proportional , Integral , Derivative )  based Rate Controller for controlling Back-Pressure**
+- **This control the rate limiting by altering the Spark Block Size rather the number of messages consumed**
 
 #What is Different from Spark Out of Box Kafka Consumers
 
@@ -28,11 +30,11 @@ This Consumer is Receiver based fault tolerant reliable consumer designed using 
 
 * Spark's Out of Box Receiver based consumer i.e. KafkaUtil CreateStream uses Kafka High Level API which has serious issue with Consumer Re-balance and hence can not be used in Production scenarios. 
 
-* This Consumer have its own mechanism to create Block from Kafka Stream ( See more details in "Some Tuning Options" section below ) and write Blocks to Spark BlockManager. This consumer implemented the Rate Limiting logic not by controlling the number of messages per block ( as it is done in Spark's Out of Box Kafka Consumers), but by size of the blocks per batch. i.e. for any given batch, this consumer controls the Rate limit by controlling the size of the batches. As Spark memory is driven by block size rather the number of messages I think rate limit by block size is more appropriate. 
+* This Consumer have its own mechanism to create Block from Kafka Stream ( See more details in "Some Tuning Options" section below ) and write Blocks to Spark BlockManager. This consumer implemented the Rate Limiting logic not by controlling the number of messages per block ( as it is done in Spark's Out of Box Kafka Consumers), but by size of the blocks per batch. i.e. for any given batch, **this consumer controls the Rate limit by controlling the size of the batches. As Spark memory is driven by block size rather the number of messages I think rate limit by block size is more appropriate.** 
 
   e.g. Let assume Kafka  contains messages of very small sizes ( say few hundred bytes ) to larger messages ( to few hundred KB ) for same topic. Now if we control the rate limit by number of messages, Block sizes may vary drastically based on what type of messages get pulled . Whereas , if I control my rate limiting by size of block, my block size remain constant across batches (even though number of messages differ across blocks ) and can help to tune my memory settings more correctly as I know how much exact memory my Block is going to consume.  
 
-* This Consumer has its own PID (Proportional, Integral, Derivative ) Controller built into the consumer and control the Spark Back Pressure by modifying the size of Block it can consume at run time. The PID Controller rate feedback mechanism is built using Zookeeper. Again the logic to control Back Pressure is not by controlling number of messages ( as it is done in Spark 1.5 , SPARK-7398) but altering size of the Block consumed per batch from Kafka. As the Back Pressure is built into the Consumer, this consumer can be used with any version of Spark if anyone want to have a back pressure controlling mechanism in their existing Spark / Kafka environment. 
+* This Consumer has its own PID (Proportional, Integral, Derivative ) Controller built into the consumer and control the **Spark Back Pressure** by modifying the size of Block it can consume at run time. The PID Controller rate feedback mechanism is built using Zookeeper. Again the logic to control Back Pressure is not by controlling number of messages ( as it is done in Spark 1.5 , SPARK-7398) but altering size of the Block consumed per batch from Kafka. As the Back Pressure is built into the Consumer, this consumer can be used with any version of Spark if anyone want to have a back pressure controlling mechanism in their existing Spark / Kafka environment. 
 
   Even though the Spark DirectStream API uses the Kafka SimpleConsumer API, but as the Spark's back pressure logic (SPARK-7398) in Spark 1.5 is built by controlling the number of messages , it may so happen that number of messages consumed during every read from Kafka in DirectStream is much higher than the computed rate by Controller , but as it applies the clamp after pulling the messages from Kafka , DirectStream can unnecessarily pull extra messages and then applies the throttle to it . which add to unnecessary network I/O from Kafka broker to the spark executor machines. 
 
@@ -65,7 +67,7 @@ And Use Below Dependency in your Maven
 # Accessing from Spark Packages
 
 
-This Consumer is now part of Spark Packages : http://spark-packages.org/package/dibbhatt/kafka-spark-consumer
+**This Consumer is now part of Spark Packages** : http://spark-packages.org/package/dibbhatt/kafka-spark-consumer
 
 Spark Packages Release is built using Spark 1.4.1 and Kafka 0.8.2.1 .
 
@@ -269,7 +271,7 @@ These two parameter need to be carefully tuned keeping in mind your downstream p
 You can control these two paramater by consumer.fetchsizebytes and consumer.fillfreqms settings mentioned above.
  
 
-## PID Back-Pressure Rate Tuning
+## Back-Pressure Rate Tuning
 
 You can enable the BackPressure meachanism by setting *consumer.backpressure.enabled* to "true" in Properties used for ReceiverLauncher
 
