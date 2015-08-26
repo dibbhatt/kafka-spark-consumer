@@ -65,7 +65,6 @@ public class ZkCoordinator implements PartitionCoordinator, Serializable {
 		_config = config;
 		_receiver = receiver;
 		_restart = restart;
-
 	}
 
 	@Override
@@ -96,10 +95,9 @@ public class ZkCoordinator implements PartitionCoordinator, Serializable {
 
 				LOG.warn("Some issue getting Partition details.. Patrition Manager size Zero");
 				_managers.clear();
-				if(_cachedList != null){
+				if (_cachedList != null) {
 					_cachedList.clear();
 				}
-				
 				return;
 			} else {
 
@@ -118,6 +116,40 @@ public class ZkCoordinator implements PartitionCoordinator, Serializable {
 					man.close();
 				}
 				LOG.info("New partition managers: " + newPartitions.toString());
+				
+				//Try to get the latest Fill Rate
+				
+				ZkState state = null;
+				
+				try {
+					
+					state = new ZkState((String) _config._stateConf
+							.get(Config.ZOOKEEPER_CONSUMER_CONNECTION));
+							
+					Map<Object, Object> rateJson = state.readJSON(ratePath());
+					
+					if (rateJson != null) {
+						String conId = (String) ((Map<Object, Object>) rateJson
+								.get("consumer")).get("id");
+
+						if (conId != null && conId.equalsIgnoreCase((String)_config._stateConf.get(Config.KAFKA_CONSUMER_ID))) {
+
+							int newFetchSize = ((Long) rateJson.get("rate")).intValue();
+							
+							LOG.info("Modified Fetch Rate for topic " 
+									+ _config._stateConf.get(Config.KAFKA_TOPIC)
+									+ " to : " + newFetchSize);
+							
+							_kafkaconfig._fetchSizeBytes = newFetchSize ;
+							_kafkaconfig._bufferSizeBytes = newFetchSize ;
+						}
+					}
+				} catch (Throwable e) {
+					LOG.warn("Error reading and/or parsing at ZkNode: " + ratePath(), e);
+				}finally{
+					if(state != null)
+						state.close();
+				}
 
 				for (Partition id : newPartitions) {
 
@@ -142,5 +174,11 @@ public class ZkCoordinator implements PartitionCoordinator, Serializable {
 	@Override
 	public PartitionManager getManager(Partition partition) {
 		return _managers.get(partition);
+	}
+	
+	public String ratePath() {
+		return _config._stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH) + "/"
+				+_config._stateConf.get(Config.KAFKA_CONSUMER_ID) + "/"
+				+ _config._stateConf.get(Config.KAFKA_TOPIC) + "/newrate";
 	}
 }

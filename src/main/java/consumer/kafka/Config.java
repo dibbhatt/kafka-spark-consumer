@@ -52,5 +52,15 @@ public class Config extends HashMap<String, Object> implements Serializable {
 	public static final String CONSUMER_FETCH_SIZE_BYTES = "consumer.fetchsizebytes";
 	public static final String CONSUMER_FILL_FREQ_MS = "consumer.fillfreqms";
 	public static final String CONSUMER_STOP_GRACEFULLY = "consumer.stopgracefully";
+	
+	
+	/**
+	 * Configuration Related to Back Pressure
+	 */
+	
+	public static final String CONSUMER_BACKPRESSURE_ENABLED = "consumer.backpressure.enabled";
+	public static final String CONSUMER_BACKPRESSURE_PROPORTIONAL = "consumer.backpressure.proportional";
+	public static final String CONSUMER_BACKPRESSURE_INTEGRAL = "consumer.backpressure.integral";
+	public static final String CONSUMER_BACKPRESSURE_DERIVATIVE = "consumer.backpressure.derivative";
 
 }

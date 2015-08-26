@@ -39,18 +39,27 @@ public class KafkaConfig implements Serializable {
 
 	public int _bufferSizeBytes = _fetchSizeBytes;
 
-	public int _refreshFreqSecs = 100;
+	public int _refreshFreqSecs = 30;
 	public int _socketTimeoutMs = 10000;
 
 	public boolean _forceFromStart = false;
 
 	public boolean _stopGracefully = true;
+	
+	public boolean _backpressureEnabled = false;
 
 	public long _startOffsetTime = kafka.api.OffsetRequest.EarliestTime();
 	public boolean _useStartOffsetTimeIfOffsetOutOfRange = true;
 
 	public long _stateUpdateIntervalMs = 2000;
 	public Map _stateConf;
+	
+	//Parameters related to Back Pressure
+	
+	public double _proportional = 0.75;
+	public double _integral = 0.15;
+	public double _derivative = 0;
+	
 
 	public KafkaConfig(Properties props) {
 
@@ -80,6 +89,22 @@ public class KafkaConfig implements Serializable {
 		if (props.getProperty("consumer.stopgracefully") != null)
 			_stopGracefully = Boolean.parseBoolean(props
 					.getProperty("consumer.stopgracefully"));
+		
+		if (props.getProperty("consumer.backpressure.enabled") != null)
+			_backpressureEnabled = Boolean.parseBoolean(props
+					.getProperty("consumer.backpressure.enabled"));
+		
+		if (props.getProperty("consumer.backpressure.proportional") != null)
+			_proportional = Double.parseDouble(props
+					.getProperty("consumer.backpressure.proportional"));
+		
+		if (props.getProperty("consumer.backpressure.integral") != null)
+			_integral = Double.parseDouble(props
+					.getProperty("consumer.backpressure.integral"));
+		
+		if (props.getProperty("consumer.backpressure.derivative") != null)
+			_derivative = Double.parseDouble(props
+					.getProperty("consumer.backpressure.derivative"));
 
 		_stateConf = new HashMap();
 		List<String> zkServers = new ArrayList<String>(Arrays.asList(zkHost

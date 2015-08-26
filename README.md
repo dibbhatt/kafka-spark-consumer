@@ -1,5 +1,5 @@
-README file for Kafka-Spark-Consumer
-===================================
+# README file for Kafka-Spark-Consumer
+
 
 NOTE : This Kafka Spark Consumer code is taken from Kafka spout of the Apache Storm project (https://github.com/apache/storm/tree/master/external/storm-kafka), 
 which was originally created by wurstmeister (https://github.com/wurstmeister/storm-kafka-0.8-plus).
@@ -22,9 +22,31 @@ Please see Java or Scala code example on how to use this Low Level Consumer
 
 Kafka Receivers uses Zookeeper for storing the latest offset for individual partitions, which will help to recover in case of failure .
 
+#What is Different from Spark Out of Box Kafka Consumers
 
-Instructions for Manual build 
-=============================
+This Consumer is Receiver based fault tolerant reliable consumer designed using Kafka Low Level Simple Consumer API. This Receiver is designed to recover from any underlying failure .
+
+1. Spark's Out of Box Receiver based consumer i.e. KafkaUtil CreateStream uses Kafka High Level API which has serious issue with Consumer Re-balance and hence can not be used in Production scenarios. 
+
+2. This Consumer have its own mechanism to create Block from Kafka Stream ( See more details in "Some Tuning Options" section below ) and write Blocks to Spark BlockManager. This consumer implemented the Rate Limiting logic not by controlling the number of messages per block ( as it is done in Spark's Out of Box Kafka Consumers), but by size of the blocks per batch. i.e. for any given batch, this consumer controls the Rate limit by controlling the size of the batches. As Spark memory is driven by block size rather the number of messages I think rate limit by block size is more appropriate. 
+
+e.g. Let assume Kafka  contains messages of very small sizes ( say few hundred bytes ) to larger messages ( to few hundred KB ) for same topic. Now if we control the rate limit by number of messages, Block sizes may vary drastically based on what type of messages get pulled . Whereas , if I control my rate limiting by size of block, my block size remain constant across batches (even though number of messages differ across blocks ) and can help to tune my memory settings more correctly as I know how much exact memory my Block is going to consume.  
+
+3. This Consumer has its own PID (Proportional, Integral, Derivative ) Controller built into the consumer and control the Spark Back Pressure by modifying the size of Block it can consume at run time. The PID Controller rate feedback mechanism is built using Zookeeper. Again the logic to control Back Pressure is not by controlling number of messages ( as it is done in Spark 1.5 , SPARK-7398) but altering size of the Block consumed per batch from Kafka. As the Back Pressure is built into the Consumer, this consumer can be used with any version of Spark if anyone want to have a back pressure controlling mechanism in their existing Spark / Kafka environment. 
+
+Even though the Spark DirectStream API uses the Kafka SimpleConsumer API, but as the Spark's back pressure logic (SPARK-7398) in Spark 1.5 is built by controlling the number of messages , it may so happen that number of messages consumed during every read from Kafka in DirectStream is much higher than the computed rate by Controller , but as it applies the clamp after pulling the messages from Kafka , DirectStream can unnecessarily pull extra messages and then applies the throttle to it . which add to unnecessary network I/O from Kafka broker to the spark executor machines. 
+
+In This consumer , it controls the back-pressure directly by modifying the amount of data it can pull from Kafka and not by applying throttle after pulling large amount of data and then clamp it, and hence saves unnecessary network I/O.
+
+If anyone use This Kafka Consumer , please refer "Spark Consumer Properties" section on how to enable back pressure. Also see "Some Tuning Options"  section on how to tune PID Controller.
+
+4. Spark DirectStream API is still experimental. If one need to use it in Production scenarios, they need to manage their own offsets in some external store as default offset management by Check-pointing is not reliable.
+
+5. This Consumer is modified version of Storm-Kafka spout which has been running in many production cases for quite some time. Hence the various logic related to Kafka fail-over and connection management is already proven and tested in production.
+
+6. This Consumer will give end to end No Data Loss guarantee once enabled with Spark WAL feature.
+
+# Instructions for Manual build 
 
 	git clone https://github.com/dibbhatt/kafka-spark-consumer
 
@@ -37,34 +59,34 @@ And Use Below Dependency in your Maven
 		<dependency>
 				<groupId>kafka.spark.consumer</groupId>
 				<artifactId>kafka-spark-consumer</artifactId>
-				<version>1.0.3</version>
+				<version>1.0.4</version>
 		</dependency>
 
-Accessing from Spark Packages
-=============================
+# Accessing from Spark Packages
+
 
 This Consumer is now part of Spark Packages : http://spark-packages.org/package/dibbhatt/kafka-spark-consumer
 
-Spark Packages Release is built using Spark 1.2.2 and Kafka 0.8.2.1 .
+Spark Packages Release is built using Spark 1.4.1 and Kafka 0.8.2.1 .
 
 Include this package in your Spark Applications using:
 
 * spark-shell, pyspark, or spark-submit
 
-	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.3
+	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.4
 
 
 * sbt
 
 If you use the sbt-spark-package plugin, in your sbt build file, add:
 
-	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.3"
+	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.4"
 
 Otherwise,
 
 	resolvers += "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven"
 			  
-	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.3"
+	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.4"
 
 
 * Maven
@@ -76,7 +98,7 @@ In your pom.xml, add:
 	  <dependency>
 		<groupId>dibbhatt</groupId>
 		<artifactId>kafka-spark-consumer</artifactId>
-		<version>1.0.3</version>
+		<version>1.0.4</version>
 	  </dependency>
 	</dependencies>
 	<repositories>
@@ -88,8 +110,7 @@ In your pom.xml, add:
 	</repositories>
 
 		
-Spark Consumer Properties
-=========================
+# Spark Consumer Properties
 				
 These are the Consumer Properties need to be used in your Driver Code. ( See Java and Scala Code example on how to use these properties)
 
@@ -117,12 +138,12 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
 	* consumer.fetchsizebytes=1048576
 * OPTIONAL - Consumer Fill Frequence in MS . Default 200 milliseconds . See further explanation in Tuning Options section
 	* consumer.fillfreqms=250
-* OPTIONAL - Consumer Gracefull Shutdown. Default is true
-	* consumer.stopgracefully=true
+* OPTIONAL - Consumer Back Pressure Support. Default is false
+	* consumer.backpressure.enabled=false
 	
 
-Java Example
-============
+# Java Example
+
 
 		Properties props = new Properties();
 		props.put("zookeeper.hosts", "x.x.x.x");
@@ -136,6 +157,7 @@ Java Example
 		props.put("consumer.forcefromstart", "true");
 		props.put("consumer.fetchsizebytes", "1048576");
 		props.put("consumer.fillfreqms", "250");
+		props.put("consumer.backpressure.enabled", "true");
 		
 		SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver")
 				.set("spark.streaming.receiver.writeAheadLog.enable", "false");;
@@ -171,8 +193,8 @@ Java Example
 		The src/main/java/consumer/kafka/client/Consumer.java is the sample Java code which uses this ReceiverLauncher to generate DStreams from Kafka and apply a Output operation for every messages of the RDD.
 
 		
-Scala Example
-=============
+# Scala Example
+
 
 
 	val conf = new SparkConf()
@@ -182,7 +204,7 @@ Scala Example
     val sc = new SparkContext(conf)
 
     //Might want to uncomment and add the jars if you are running on standalone mode.
-    //sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.3-jar-with-dependencies.jar")
+    //sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.4-jar-with-dependencies.jar")
 	
     val ssc = new StreamingContext(sc, Seconds(10))
 
@@ -204,6 +226,7 @@ Scala Example
                                                    "kafka.consumer.id" -> "12345",
 												   //optional properties
 												   "consumer.forcefromstart" -> "true",
+												   "consumer.backpressure.enabled" -> "true",
 												   "consumer.fetchsizebytes" -> "1048576",
 												   "consumer.fillfreqms" -> "250")
 
@@ -222,8 +245,10 @@ Scala Example
 	examples/scala/LowLevelKafkaConsumer.scala is a sample scala code on how to use this utility.
 
 	
-Some Tuning Options
-===================
+# Some Tuning Options**
+
+
+## Block Size Tuning :
 
 The Low Level Kafka Consumer consumes messages from Kafka in Rate Limiting way. Default settings can be found in consumer.kafka.KafkaConfig.java class
 
@@ -242,23 +267,40 @@ If you need higher rate, you can increase the _fetchSizeBytes , or if you need l
 These two parameter need to be carefully tuned keeping in mind your downstream processing rate and your memory settings.
 
 You can control these two paramater by consumer.fetchsizebytes and consumer.fillfreqms settings mentioned above.
+ 
 
-Note : If you need more finer control of your Receivers, you can directly use KafkaReceiver or KafkaRangeReceiver based on your use case like you want to consume from ONLY one Partition , or you want to consume from 
-SUBSET of partition . 
+## PID Back-Pressure Rate Tuning
 
-Running Spark Kafka Consumer
-===========================
-Let assume your Kafka Message Processing logic is in custom-processor.jar which is built using the spark-kafka-consumer as dependency.
+You can enable the BackPressure meachanism by setting *consumer.backpressure.enabled* to "true" in Properties used for ReceiverLauncher
+
+The Default PID settings is as below.
+
+Proportional = 0.75
+Integral = 0.15
+Derivative = 0
+
+If you increase any or all of these , your damping factor will be higher. So if you want to lower the Consumer rate more than what is being achived by applying the default PID rate , you can increase these values.
+
+You can control the PID values by settings the Properties below.
+
+*consumer.backpressure.proportional*
+*consumer.backpressure.integral*
+*consumer.backpressure.derivative*
+
+
+# Running Spark Kafka Consumer
+
+Let assume your Driver code is in xyz.jar which is built using the spark-kafka-consumer as dependency.
 
 Launch this using spark-submit
 
-./bin/spark-submit --class x.y.z.YourDriver --master spark://x.x.x.x:7077 --executor-memory 5G /<Path_To>/custom-processor.jar
+./bin/spark-submit --class x.y.z.YourDriver --master spark://x.x.x.x:7077 --executor-memory 5G /<Path_To>/xyz.jar
 
 This will start the Spark Receiver and Fetch Kafka Messages for every partition of the given topic and generates the DStream.
 
 e.g. to Test Consumer provided in the package with your Kafka settings please modify it to point to your Kafka and use below command for spark submit 
 
-./bin/spark-submit --class consumer.kafka.client.Consumer --master spark://x.x.x.x:7077 --executor-memory 5G /<Path_To>/kafka-spark-consumer-1.0.3-jar-with-dependencies.jar
+./bin/spark-submit --class consumer.kafka.client.Consumer --master spark://x.x.x.x:7077 --executor-memory 5G /<Path_To>/kafka-spark-consumer-1.0.4-jar-with-dependencies.jar
 
 
  

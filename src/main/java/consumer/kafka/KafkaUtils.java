@@ -83,6 +83,12 @@ public class KafkaUtils {
 		int partitionId = partition.partition;
 
 		// for (int errors = 0; errors < 2 && msgs == null; errors++) {
+		
+		
+		LOG.info("Fetching from Kafka for partition " + partition.partition 
+				+ " for fetchSize " + config._fetchSizeBytes 
+				+ " and bufferSize " + consumer.bufferSize());
+		
 		FetchRequestBuilder builder = new FetchRequestBuilder();
 		FetchRequest fetchRequest = builder
 				.addFetch(topic, partitionId, offset, config._fetchSizeBytes)

@@ -213,6 +213,7 @@ public class PartitionManager implements Serializable {
 						commit();
 						_arrayBuffer.clear();
 					}
+
 				}
 
 			} catch (Exception ex) {
@@ -237,6 +238,7 @@ public class PartitionManager implements Serializable {
 	private void fill() {
 
 		try {
+			
 			FetchResponse fetchResponse = KafkaUtils.fetchMessages(
 					_kafkaconfig, _consumer, _partition, _emittedToOffset);
 
@@ -368,6 +370,7 @@ public class PartitionManager implements Serializable {
 		try {
 
 			_connections.unregister(_partition.host, _partition.partition);
+			_connections.clear();
 			LOG.info("Closed connection" + " for " + _partition);
 
 		} catch (Exception ex) {

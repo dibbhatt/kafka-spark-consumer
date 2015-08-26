@@ -46,19 +46,20 @@ public class Consumer implements Serializable {
 	private void run() {
 
 		Properties props = new Properties();
-		props.put("zookeeper.hosts", "10.252.5.113");
-		props.put("zookeeper.port", "2182");
+		props.put("zookeeper.hosts", "10.252.1.136");
+		props.put("zookeeper.port", "2181");
 		props.put("zookeeper.broker.path", "/brokers");
-		props.put("kafka.topic", "load");
-		props.put("kafka.consumer.id", "12345");
+		props.put("kafka.topic", "test-topic");
+		props.put("kafka.consumer.id", "test-id");
 		props.put("zookeeper.consumer.connection", "10.252.5.113:2182");
 		props.put("zookeeper.consumer.path", "/spark-kafka");
 		// Optional Properties
 		props.put("consumer.forcefromstart", "true");
 		props.put("consumer.fetchsizebytes", "1048576");
 		props.put("consumer.fillfreqms", "250");
+		props.put("consumer.backpressure.enabled", "true");
 
-		SparkConf _sparkConf = new SparkConf().setAppName("KafkaReceiver").set(
+		SparkConf _sparkConf = new SparkConf().set(
 				"spark.streaming.receiver.writeAheadLog.enable", "false");
 		;
 
@@ -67,7 +68,7 @@ public class Consumer implements Serializable {
 
 		// Specify number of Receivers you need.
 
-		int numberOfReceivers = 1;
+		int numberOfReceivers = 3;
 
 		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(
 				jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
@@ -80,7 +81,6 @@ public class Consumer implements Serializable {
 							throws Exception {
 
 						rdd.collect();
-
 						System.out.println(" Number of records in this batch "
 								+ rdd.count());
 

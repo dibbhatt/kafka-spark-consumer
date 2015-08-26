@@ -1,0 +1,120 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package consumer.kafka;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class PIDController {
+
+	private double proportional ;
+	private double integral ;
+	private double derivative ;
+	private long latestTime;
+	private double latestError = -1;
+	
+	public static final Logger LOG = LoggerFactory
+			.getLogger(PIDController.class);
+	
+	public PIDController(double proportional , double integral , double derivative){
+		
+		this.proportional = proportional;
+		this.integral = integral ;
+		this.derivative = derivative;
+		this.latestTime =  System.currentTimeMillis();
+	}
+	
+	public int calculateRate(long time ,long batchDuration, int partitionCount, int fetchSizeBytes , int fillFreqMs , long schedulingDelay , long processingDelay){
+		
+		LOG.info("======== Rate Revision Starts ========");
+        double  delaySinceUpdate = (time - latestTime);
+        
+        int blocksPerSecond = (1000 / fillFreqMs);
+       
+        double fixedRate = (partitionCount * fetchSizeBytes ) * blocksPerSecond;
+        
+        double processingDecay = (double)batchDuration / processingDelay;
+        
+        // in bytes / seconds
+        double processingRate =  ((partitionCount * fetchSizeBytes)  * (1000 / fillFreqMs)) * processingDecay ;
+        
+        // in bytes / seconds
+        double error = (double) (fixedRate - processingRate) ;
+
+        LOG.info("Fetch Size       : " + fetchSizeBytes);
+        LOG.info("Fill Freq        : " + fillFreqMs);
+        LOG.info("Batch Duration   : " + batchDuration);
+        LOG.info("Partition count  : " + partitionCount);
+        LOG.info("Scheduling Delay : " + schedulingDelay);
+        LOG.info("Processing Delay : " + processingDelay);
+        LOG.info("Fixed Rate       : " + new Double(fixedRate).intValue());
+        LOG.info("Processing rate  : " + new Double(processingRate).intValue());
+        LOG.info("Error            : " + new Double(error).intValue());
+        
+        // (in bytes /second)
+        double  historicalError = (schedulingDelay * processingRate ) / 1000 ;
+
+        LOG.info("HistoricalError  : " + new Double(historicalError).intValue());
+        
+        // in bytes /(second)
+        double dError = (error - latestError) / delaySinceUpdate;
+
+        LOG.info("Derror           : " + dError);
+        
+        double newRate = (fixedRate - proportional * error -
+                                    integral * historicalError -
+                                    derivative * dError) ;
+        
+        newRate = (newRate / partitionCount) / blocksPerSecond ;
+        
+        LOG.info("Reviced   Fetch  : " + new Double(newRate).intValue());
+        
+        if(newRate > fetchSizeBytes)
+        	newRate = fetchSizeBytes ;
+        
+        latestError = error;
+        
+        int rate = new Double(newRate).intValue();
+        
+        LOG.info("New Fetch Size   : " + rate);
+        LOG.info("Percent Change   : " + ((double)(fetchSizeBytes - rate) / fetchSizeBytes) * 100);
+        LOG.info("======== Rate Revision Starts ========");
+        
+        return new Double(newRate).intValue();
+	}
+	
+	public static void main(String[] args){
+		
+		
+		int _fetchSizeBytes = 1048576 ; // 1024 * 1024
+		int _fillFreqMs = 250;
+		int batchDuration = 5000; // 5 Seconds
+		int topicPartition = 3;
+		
+		long schedulingDelay = 1000; // 1 Sec scheduling delay
+		long processingDelay = 6000; // 6 Sec Processing Delay
+		
+		long time = System.currentTimeMillis() + 250 ;
+				
+		PIDController controller = new PIDController(0.75, 0.15 , 0);
+		
+		// There will be Rate Reduction from Original _fetchSizeBytes
+		double fixedRate = controller.calculateRate(time ,batchDuration, topicPartition, _fetchSizeBytes ,_fillFreqMs, schedulingDelay , processingDelay);
+	}
+}
