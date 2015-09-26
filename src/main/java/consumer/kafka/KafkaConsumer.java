@@ -63,8 +63,12 @@ public class KafkaConsumer implements Runnable, Serializable {
 	}
 
 	public void close() {
-		_state.close();
-		_connections.clear();
+		if(_state != null) {
+			_state.close();
+		}
+		if(_connections != null ){
+			_connections.clear();
+		}
 	}
 
 	public void createStream() throws Exception {

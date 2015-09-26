@@ -66,10 +66,10 @@ public class KafkaRangeReceiver extends Receiver<MessageAndMetadata> {
 
 		_threadList.clear();
 		KafkaConfig kafkaConfig = new KafkaConfig(_props);
-		ZkState zkState = new ZkState(kafkaConfig);
 
 		for (Integer partitionId : _partitionSet) {
 
+			ZkState zkState = new ZkState(kafkaConfig);
 			_kConsumer = new KafkaConsumer(kafkaConfig, zkState, this);
 			_kConsumer.open(partitionId);
 
