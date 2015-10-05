@@ -20,9 +20,9 @@ In your driver code , you can launch the Receivers by calling **ReceiverLauncher
 
 Please see Java or Scala code example on how to use this Low Level Consumer
 
-- **This Consumer uses Zookeeper for storing the latest offset for individual partitions, which will help to recover in case of failure**
-- **This Consumer has implemented PID (Proportional , Integral , Derivative )  based Rate Controller for controlling Back-Pressure**
-- **This control the rate limiting by altering the Spark Block Size rather the number of messages consumed**
+- This Consumer uses **Zookeeper** for storing the latest offset for individual partitions, which will help to recover in case of failure
+- This Consumer has implemented **PID (Proportional , Integral , Derivative )**  based Rate Controller for controlling Back-Pressure
+- This control the rate limiting by altering the **Spark Block Size** rather the number of messages consumed
 
 #What is Different from Spark Out of Box Kafka Consumers
 
@@ -30,7 +30,9 @@ This Consumer is Receiver based fault tolerant reliable consumer designed using 
 
 * Spark's Out of Box Receiver based consumer i.e. KafkaUtil CreateStream uses Kafka High Level API which has serious issue with Consumer Re-balance and hence can not be used in Production scenarios. 
 
-* This Consumer have its own mechanism to create Block from Kafka Stream ( See more details in "Some Tuning Options" section below ) and write Blocks to Spark BlockManager. This consumer implemented the Rate Limiting logic not by controlling the number of messages per block ( as it is done in Spark's Out of Box Kafka Consumers), but by size of the blocks per batch. i.e. for any given batch, **this consumer controls the Rate limit by controlling the size of the batches. As Spark memory is driven by block size rather the number of messages I think rate limit by block size is more appropriate.** 
+* This consumer uses Kafka Low Level Simple Consumer API which is much faster than Kafka High Level API.
+
+* This Consumer have its own mechanism to create Block from Kafka Stream ( See more details in "Some Tuning Options" section below ) and write Blocks to Spark BlockManager. This consumer implemented the Rate Limiting logic not by controlling the number of messages per block ( as it is done in Spark's Out of Box Kafka Consumers), but by size of the blocks per batch. i.e. for any given batch, this consumer controls the Rate limit by controlling the size of the batches. As Spark memory is driven by block size rather the number of messages I think **rate limit by block size is more appropriate.** 
 
   e.g. Let assume Kafka  contains messages of very small sizes ( say few hundred bytes ) to larger messages ( to few hundred KB ) for same topic. Now if we control the rate limit by number of messages, Block sizes may vary drastically based on what type of messages get pulled . Whereas , if I control my rate limiting by size of block, my block size remain constant across batches (even though number of messages differ across blocks ) and can help to tune my memory settings more correctly as I know how much exact memory my Block is going to consume.  
 
@@ -38,15 +40,23 @@ This Consumer is Receiver based fault tolerant reliable consumer designed using 
 
   Even though the Spark DirectStream API uses the Kafka SimpleConsumer API, but as the Spark's back pressure logic (SPARK-7398) in Spark 1.5 is built by controlling the number of messages , it may so happen that number of messages consumed during every read from Kafka in DirectStream is much higher than the computed rate by Controller , but as it applies the clamp after pulling the messages from Kafka , DirectStream can unnecessarily pull extra messages and then applies the throttle to it . which add to unnecessary network I/O from Kafka broker to the spark executor machines. 
 
-  In This consumer , it controls the back-pressure directly by modifying the amount of data it can pull from Kafka and not by applying throttle after pulling large amount of data and then clamp it, and hence saves unnecessary network I/O.
+  In This consumer , **it controls the back-pressure by modifying the amount of data it can pull from Kafka** and not by applying throttle after pulling large amount of data and then clamp it, and hence saves unnecessary network I/O.
 
   If anyone use This Kafka Consumer , please refer "Spark Consumer Properties" section on how to enable back pressure. Also see "Some Tuning Options"  section on how to tune PID Controller.
 
-* Spark DirectStream API is still experimental. If one need to use it in Production scenarios, they need to manage their own offsets in some external store as default offset management by Check-pointing is not reliable.
+* This consumer can give maximum **Receiving Parallelism** if you specify number of Receivers equal to your number of partitions of your Kafka topic. 
 
-* This Consumer is modified version of Storm-Kafka spout which has been running in many production cases for quite some time. Hence the various logic related to Kafka fail-over and connection management is already proven and tested in production.
+* If one need to use Spark DirectStream API in Production scenarios, they need to manage their own offsets in some external store as default offset management by Check-pointing is not reliable.
 
-* This Consumer will give end to end No Data Loss guarantee once enabled with Spark WAL feature.
+* By default the **spark.streaming.concurrentJobs** is set to 1 for Spark Streaming. If anyone wants to have more parallelism by processing multiple batches cuncurrently, the DirectStream API will have issue if you want to store offest to external store. This is becuse in the case of concurrentJobs > 1 , there will be no control which Batch will execute at which order , and one can not sotre offset-ranges to external stores for a given batch if processing of Batch not happen in order.
+
+* Even though this consumer will occupy one CPU core for every Receiver , this Consumer gives **more parallelism while processing the RDD**. Let assume you have Kafka Topic with 10 Partition. And your Block Interval is 200 Ms and Batch Interval is 5 Sec. This Consumer will generate 5 Blocks every second and 25 Blocks for every Batch. Thus this consumer will have 25 partitions for given RDD generated per batch which will process in parallel. Whereas , in DirectStream approach, in this scenario , every RDD will only have 10 partitions (same as topic partition) which will be your maximum processing parallelism. You can re-partition the stream but that leads to excess I/O. So Unless your Kafka topic has larger partitions , DirectStream API will have less Parallelism for RDD processing and hence lesser throughput.
+
+* DirectStream API fetch messages from Kafka while processing the RDD. That leads to higher latency. In this consumer , as the Blocks are already fetched and stored in BlockManager, the RDD processing latency is much less.
+
+* This Consumer is modified version of Storm-Kafka spout which has been running in many production cases for quite some time. Hence the various logic related to **Kafka fail-over and connection management is already proven and tested in production.**
+
+* This Consumer will give end to end **No Data Loss guarantee** once enabled with Spark WAL feature.
 
 # Instructions for Manual build 
 
