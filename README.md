@@ -1,6 +1,6 @@
 # README file for Kafka-Spark-Consumer
 
-Keep a tab on this Spark JIRA ** https://issues.apache.org/jira/browse/SPARK-11045 ** where I am trying to contribute this project back to Spark Core.
+Keep a tab on this Spark JIRA **https://issues.apache.org/jira/browse/SPARK-11045** where I am trying to contribute this project back to Spark Core.
 
 
 NOTE : This Kafka Spark Consumer code is taken from Kafka spout of the Apache Storm project (https://github.com/apache/storm/tree/master/external/storm-kafka), 
