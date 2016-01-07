@@ -31,107 +31,119 @@ import org.apache.spark.streaming.receiver.Receiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("serial")
 public class KafkaConsumer implements Runnable, Serializable {
 
-	private static final long serialVersionUID = 1780042755212645597L;
+  public static final Logger LOG = LoggerFactory.getLogger(KafkaConsumer.class);
 
-	public static final Logger LOG = LoggerFactory
-			.getLogger(KafkaConsumer.class);
+  KafkaConfig _kafkaconfig;
+  PartitionCoordinator _coordinator;
+  DynamicPartitionConnections _connections;
+  ZkState _state;
+  long _lastConsumeTime = 0L;
+  int _currPartitionIndex = 0;
+  Receiver<MessageAndMetadata> _receiver;
 
-	KafkaConfig _kafkaconfig;
-	PartitionCoordinator _coordinator;
-	DynamicPartitionConnections _connections;
-	ZkState _state;
-	long _lastConsumeTime = 0L;
-	int _currPartitionIndex = 0;
-	Receiver _receiver;
+  public KafkaConsumer(
+      KafkaConfig config,
+        ZkState zkState,
+        Receiver<MessageAndMetadata> receiver) {
+    _kafkaconfig = config;
+    _state = zkState;
+    _receiver = receiver;
+  }
 
-	public KafkaConsumer(KafkaConfig config, ZkState zkState, Receiver receiver) {
-		_kafkaconfig = config;
-		_state = zkState;
-		_receiver = receiver;
-	}
+  public void open(int partitionId) {
 
-	public void open(int partitionId) {
+    _currPartitionIndex = partitionId;
+    _connections =
+        new DynamicPartitionConnections(_kafkaconfig, new ZkBrokerReader(
+            _kafkaconfig,
+              _state));
+    _coordinator =
+        new ZkCoordinator(
+            _connections,
+              _kafkaconfig,
+              _state,
+              partitionId,
+              _receiver,
+              true);
 
-		_currPartitionIndex = partitionId;
-		_connections = new DynamicPartitionConnections(_kafkaconfig,
-				new ZkBrokerReader(_kafkaconfig, _state));
-		_coordinator = new ZkCoordinator(_connections, _kafkaconfig, _state,
-				partitionId, _receiver, true);
+  }
 
-	}
+  public void close() {
+    if (_state != null) {
+      _state.close();
+    }
+    if (_connections != null) {
+      _connections.clear();
+    }
+  }
 
-	public void close() {
-		if(_state != null) {
-			_state.close();
-		}
-		if(_connections != null ){
-			_connections.clear();
-		}
-	}
+  public void createStream() throws Exception {
+    try {
+      List<PartitionManager> managers = _coordinator.getMyManagedPartitions();
+      if (managers == null || managers.size() == 0) {
+        LOG
+            .warn("Some issue getting Partition details.. Refreshing Corodinator..");
+        _coordinator.refresh();
+      } else {
 
-	public void createStream() throws Exception {
-		try {
-			List<PartitionManager> managers = _coordinator
-					.getMyManagedPartitions();
-			if (managers == null || managers.size() == 0) {
-				LOG.warn("Some issue getting Partition details.. Refreshing Corodinator..");
-				_coordinator.refresh();
-			} else {
+        managers.get(0).next();
+      }
+    } catch (FailedFetchException fe) {
 
-				managers.get(0).next();
-			}
-		} catch (FailedFetchException fe) {
+      fe.printStackTrace();
+      LOG.warn("Fetch failed. Refresing Coordinator..", fe);
+      _coordinator.refresh();
 
-			fe.printStackTrace();
-			LOG.warn("Fetch failed. Refresing Coordinator..", fe);
-			_coordinator.refresh();
+    } catch (Exception ex) {
+      LOG.error("Partition "
+          + _currPartitionIndex
+            + " encountered error during createStream : "
+            + ex.getMessage());
+      ex.printStackTrace();
+      throw ex;
+    }
 
-		} catch (Exception ex) {
-			LOG.error("Partition " + _currPartitionIndex
-					+ " encountered error during createStream : "
-					+ ex.getMessage());
-			ex.printStackTrace();
-			throw ex;
-		}
+  }
 
-	}
+  public void deactivate() {
+    commit();
+  }
 
-	public void deactivate() {
-		commit();
-	}
+  private void commit() {
+    _coordinator.getMyManagedPartitions().get(0).commit();
+  }
 
-	private void commit() {
-		_coordinator.getMyManagedPartitions().get(0).commit();
-	}
+  @Override
+  public void run() {
 
-	@Override
-	public void run() {
+    try {
 
-		try {
+      while (!_receiver.isStopped()) {
 
-			while (!_receiver.isStopped()) {
+        long timeSinceLastPull = System.currentTimeMillis() - _lastConsumeTime;
+        if (timeSinceLastPull >= _kafkaconfig._fillFreqMs) {
+          _lastConsumeTime = System.currentTimeMillis();
+          this.createStream();
+        } else {
+          long waitTime = _kafkaconfig._fillFreqMs - timeSinceLastPull;
+          if (waitTime > 0)
+            Thread.sleep(waitTime);
+        }
+      }
 
-				if ((System.currentTimeMillis() - _lastConsumeTime) > _kafkaconfig._fillFreqMs) {
-					this.createStream();
-					_lastConsumeTime = System.currentTimeMillis();
-				} else {
+    } catch (Exception ex) {
 
-					Thread.sleep(_kafkaconfig._fillFreqMs);
-				}
-			}
+      try {
+        this.close();
+        throw ex;
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
 
-		} catch (Exception ex) {
-
-			try {
-				this.close();
-				throw ex;
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-
-	}
+  }
 
 }

@@ -58,6 +58,8 @@ public class Consumer implements Serializable {
 		props.put("consumer.fetchsizebytes", "1048576");
 		props.put("consumer.fillfreqms", "250");
 		props.put("consumer.backpressure.enabled", "true");
+    props.put("kafka.message.handler.class",
+          "consumer.kafka.IdentityMessageHandler");
 
 		SparkConf _sparkConf = new SparkConf().set(
 				"spark.streaming.receiver.writeAheadLog.enable", "false");

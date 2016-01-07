@@ -31,78 +31,81 @@ import consumer.kafka.KafkaConsumer;
 import consumer.kafka.MessageAndMetadata;
 import consumer.kafka.ZkState;
 
+@SuppressWarnings("serial")
 public class KafkaRangeReceiver extends Receiver<MessageAndMetadata> {
 
-	private static final long serialVersionUID = -4434734456026616121L;
-	private final Properties _props;
-	private Set<Integer> _partitionSet;
-	private KafkaConsumer _kConsumer;
-	private transient Thread _consumerThread;
-	private List<Thread> _threadList = new ArrayList<Thread>();
+  private final Properties _props;
+  private Set<Integer> _partitionSet;
+  private KafkaConsumer _kConsumer;
+  private transient Thread _consumerThread;
+  private List<Thread> _threadList = new ArrayList<Thread>();
 
-	public KafkaRangeReceiver(Properties props, Set<Integer> partitionSet) {
-		super(StorageLevel.MEMORY_ONLY());
-		this._props = props;
-		_partitionSet = partitionSet;
-	}
+  public KafkaRangeReceiver(Properties props, Set<Integer> partitionSet) {
+    super(StorageLevel.MEMORY_ONLY());
+    this._props = props;
+    _partitionSet = partitionSet;
+  }
 
-	public KafkaRangeReceiver(Properties props, Set<Integer> partitionSet,
-			StorageLevel storageLevel) {
-		super(storageLevel);
-		this._props = props;
-		_partitionSet = partitionSet;
-	}
+  public KafkaRangeReceiver(
+      Properties props,
+        Set<Integer> partitionSet,
+        StorageLevel storageLevel) {
+    super(storageLevel);
+    this._props = props;
+    _partitionSet = partitionSet;
+  }
 
-	@Override
-	public void onStart() {
+  @Override
+  public void onStart() {
 
-		start();
+    start();
 
-	}
+  }
 
-	public void start() {
+  public void start() {
 
-		// Start the thread that receives data over a connection
+    // Start the thread that receives data over a connection
 
-		_threadList.clear();
-		KafkaConfig kafkaConfig = new KafkaConfig(_props);
+    _threadList.clear();
+    KafkaConfig kafkaConfig = new KafkaConfig(_props);
 
-		for (Integer partitionId : _partitionSet) {
+    for (Integer partitionId : _partitionSet) {
 
-			ZkState zkState = new ZkState(kafkaConfig);
-			_kConsumer = new KafkaConsumer(kafkaConfig, zkState, this);
-			_kConsumer.open(partitionId);
+      ZkState zkState = new ZkState(kafkaConfig);
+      _kConsumer = new KafkaConsumer(kafkaConfig, zkState, this);
+      _kConsumer.open(partitionId);
 
-			Thread.UncaughtExceptionHandler eh = new Thread.UncaughtExceptionHandler() {
+      Thread.UncaughtExceptionHandler eh =
+          new Thread.UncaughtExceptionHandler() {
 
-				public void uncaughtException(Thread th, Throwable ex) {
+            public void uncaughtException(Thread th, Throwable ex) {
 
-					if (ex instanceof InterruptedException) {
+              if (ex instanceof InterruptedException) {
 
-						th.interrupt();
-						stop(" Stopping Receiver due to " + ex);
+                th.interrupt();
+                stop(" Stopping Receiver due to " + ex);
 
-					} else {
+              } else {
 
-						restart("Restarting Receiver ", ex, 5000);
-					}
-				}
-			};
+                restart("Restarting Receiver ", ex, 5000);
+              }
+            }
+          };
 
-			_consumerThread = new Thread(_kConsumer);
-			_consumerThread.setDaemon(true);
-			_consumerThread.setUncaughtExceptionHandler(eh);
-			_threadList.add(_consumerThread);
-			_consumerThread.start();
-		}
-	}
+      _consumerThread = new Thread(_kConsumer);
+      _consumerThread.setDaemon(true);
+      _consumerThread.setUncaughtExceptionHandler(eh);
+      _threadList.add(_consumerThread);
+      _consumerThread.start();
+    }
+  }
 
-	@Override
-	public void onStop() {
+  @Override
+  public void onStop() {
 
-		for (Thread t : _threadList) {
-			if (t.isAlive())
-				t.interrupt();
-		}
-	}
+    for (Thread t : _threadList) {
+      if (t.isAlive())
+        t.interrupt();
+    }
+  }
 }

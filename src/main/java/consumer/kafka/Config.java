@@ -27,40 +27,54 @@ package consumer.kafka;
 import java.io.Serializable;
 import java.util.HashMap;
 
+@SuppressWarnings("serial")
 public class Config extends HashMap<String, Object> implements Serializable {
 
-	/**
-	 * Kafka related configurations
-	 */
-	public static final String ZOOKEEPER_HOSTS = "zookeeper.hosts";
-	public static final String ZOOKEEPER_PORT = "zookeeper.port";
-	public static final String KAFKA_TOPIC = "kafka.topic";
-	public static final String ZOOKEEPER_BROKER_PATH = "zookeeper.broker.path";
+  /**
+   * Kafka related configurations
+   */
+  public static final String ZOOKEEPER_HOSTS = "zookeeper.hosts";
+  public static final String ZOOKEEPER_PORT = "zookeeper.port";
+  public static final String KAFKA_TOPIC = "kafka.topic";
+  public static final String ZOOKEEPER_BROKER_PATH = "zookeeper.broker.path";
 
-	/**
-	 * Consumer related configurations
-	 */
-	public static final String ZOOKEEPER_CONSUMER_PATH = "zookeeper.consumer.path";
-	public static final String ZOOKEEPER_CONSUMER_CONNECTION = "zookeeper.consumer.connection";
-	public static final String KAFKA_CONSUMER_ID = "kafka.consumer.id";
+  /**
+   * Consumer related configurations
+   */
+  public static final String ZOOKEEPER_CONSUMER_PATH =
+      "zookeeper.consumer.path";
+  public static final String ZOOKEEPER_CONSUMER_CONNECTION =
+      "zookeeper.consumer.connection";
+  public static final String KAFKA_CONSUMER_ID = "kafka.consumer.id";
 
-	/**
-	 * Optional Configurations
-	 */
-	public static final String KAFKA_PARTITIONS_NUMBER = "kafka.partitions.number";
-	public static final String CONSUMER_FORCE_FROM_START = "consumer.forcefromstart";
-	public static final String CONSUMER_FETCH_SIZE_BYTES = "consumer.fetchsizebytes";
-	public static final String CONSUMER_FILL_FREQ_MS = "consumer.fillfreqms";
-	public static final String CONSUMER_STOP_GRACEFULLY = "consumer.stopgracefully";
-	
-	
-	/**
-	 * Configuration Related to Back Pressure
-	 */
-	
-	public static final String CONSUMER_BACKPRESSURE_ENABLED = "consumer.backpressure.enabled";
-	public static final String CONSUMER_BACKPRESSURE_PROPORTIONAL = "consumer.backpressure.proportional";
-	public static final String CONSUMER_BACKPRESSURE_INTEGRAL = "consumer.backpressure.integral";
-	public static final String CONSUMER_BACKPRESSURE_DERIVATIVE = "consumer.backpressure.derivative";
+  /**
+   * Optional Configurations
+   */
+  public static final String KAFKA_PARTITIONS_NUMBER =
+      "kafka.partitions.number";
+  public static final String CONSUMER_FORCE_FROM_START =
+      "consumer.forcefromstart";
+  public static final String CONSUMER_FETCH_SIZE_BYTES =
+      "consumer.fetchsizebytes";
+  public static final String CONSUMER_FILL_FREQ_MS = "consumer.fillfreqms";
+  public static final String CONSUMER_STOP_GRACEFULLY =
+      "consumer.stopgracefully";
+
+  /**
+   * Configuration Related to Back Pressure
+   */
+
+  public static final String CONSUMER_BACKPRESSURE_ENABLED =
+      "consumer.backpressure.enabled";
+  public static final String CONSUMER_BACKPRESSURE_PROPORTIONAL =
+      "consumer.backpressure.proportional";
+  public static final String CONSUMER_BACKPRESSURE_INTEGRAL =
+      "consumer.backpressure.integral";
+  public static final String CONSUMER_BACKPRESSURE_DERIVATIVE =
+      "consumer.backpressure.derivative";
+
+  public static final String KAFKA_RECEIVER_NUMBER = "kafka.receiver.number";
+  public static final String KAFKA_MESSAGE_HANDLER_CLASS =
+      "kafka.message.handler.class";
 
 }

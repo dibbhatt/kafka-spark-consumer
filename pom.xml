@@ -17,14 +17,14 @@
 
 	<groupId>kafka.spark.consumer</groupId>
 	<artifactId>kafka-spark-consumer</artifactId>
-	<version>1.0.5</version>
+	<version>1.0.6</version>
 	<packaging>jar</packaging>
 
 	<name>kafka-spark-consumer</name>
 
 	<properties>
-		<spark.version>1.4.1</spark.version>
-		<kafka.version>0.8.2.1</kafka.version>
+		<spark.version>1.6.0</spark.version>
+		<kafka.version>0.9.0.0</kafka.version>
 	</properties>
 
 	<dependencies>
@@ -136,6 +136,7 @@
 					<artifactId>log4j</artifactId>
 				</exclusion>
 			</exclusions>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>

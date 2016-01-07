@@ -25,6 +25,7 @@ Please see Java or Scala code example on how to use this Low Level Consumer
 - This Consumer uses **Zookeeper** for storing the latest offset for individual partitions, which will help to recover in case of failure
 - This Consumer has implemented **PID (Proportional , Integral , Derivative )**  based Rate Controller for controlling Back-Pressure
 - This control the rate limiting by altering the **Spark Block Size** rather the number of messages consumed
+- This conusmer can use **Message Interceptor** which help to preprocess kafka messages before writing to Spark Block Manager
 
 #What is Different from Spark Out of Box Kafka Consumers
 
@@ -73,7 +74,7 @@ And Use Below Dependency in your Maven
 		<dependency>
 				<groupId>kafka.spark.consumer</groupId>
 				<artifactId>kafka-spark-consumer</artifactId>
-				<version>1.0.5</version>
+				<version>1.0.6</version>
 		</dependency>
 
 # Accessing from Spark Packages
@@ -81,26 +82,26 @@ And Use Below Dependency in your Maven
 
 **This Consumer is now part of Spark Packages** : http://spark-packages.org/package/dibbhatt/kafka-spark-consumer
 
-Spark Packages Release is built using Spark 1.4.1 and Kafka 0.8.2.1 .
+Spark Packages Release is built using Spark 1.6.0 and Kafka 0.9.0
 
 Include this package in your Spark Applications using:
 
 * spark-shell, pyspark, or spark-submit
 
-	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.5
+	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.6
 
 
 * sbt
 
 If you use the sbt-spark-package plugin, in your sbt build file, add:
 
-	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.5"
+	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.6"
 
 Otherwise,
 
 	resolvers += "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven"
 			  
-	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.5"
+	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.6"
 
 
 * Maven
@@ -112,7 +113,7 @@ In your pom.xml, add:
 	  <dependency>
 		<groupId>dibbhatt</groupId>
 		<artifactId>kafka-spark-consumer</artifactId>
-		<version>1.0.5</version>
+		<version>1.0.6</version>
 	  </dependency>
 	</dependencies>
 	<repositories>
@@ -154,6 +155,10 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
 	* consumer.fillfreqms=250
 * OPTIONAL - Consumer Back Pressure Support. Default is false
 	* consumer.backpressure.enabled=false
+* OPTIONAL - Kafka Message Handler Class. Preprocess messages before writing to Spark Block Manager. Default IdentityMessageHandler
+	* kafka.message.handler.class=consumer.kafka.IdentityMessageHandler
+* OPTIONAL - Consumer Minimum Fetch Size if consumer.backpressure.enabled is true. Default 1 KB
+	* consumer.min.fetchsizebytes=10240
 	
 
 # Java Example
@@ -177,7 +182,7 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
 				.set("spark.streaming.receiver.writeAheadLog.enable", "false");;
 
 		JavaStreamingContext jsc = new JavaStreamingContext(_sparkConf,
-				new Duration(10000));
+				new Duration(5000));
 		
 		//Specify number of Receivers you need. 
 		//It should be less than or equal to number of Partitions of your topic
@@ -218,9 +223,9 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
     val sc = new SparkContext(conf)
 
     //Might want to uncomment and add the jars if you are running on standalone mode.
-    //sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.5-jar-with-dependencies.jar")
+    //sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.6-jar-with-dependencies.jar")
 	
-    val ssc = new StreamingContext(sc, Seconds(10))
+    val ssc = new StreamingContext(sc, Seconds(5))
 
     val topic = "some-topic"
     val zkhosts = "x.x.x.x"
@@ -314,7 +319,7 @@ This will start the Spark Receiver and Fetch Kafka Messages for every partition 
 
 e.g. to Test Consumer provided in the package with your Kafka settings please modify it to point to your Kafka and use below command for spark submit 
 
-./bin/spark-submit --class consumer.kafka.client.Consumer --master spark://x.x.x.x:7077 --executor-memory 5G /<Path_To>/kafka-spark-consumer-1.0.5-jar-with-dependencies.jar
+./bin/spark-submit --class consumer.kafka.client.Consumer --master spark://x.x.x.x:7077 --executor-memory 5G /<Path_To>/kafka-spark-consumer-1.0.6-jar-with-dependencies.jar
 
 
  

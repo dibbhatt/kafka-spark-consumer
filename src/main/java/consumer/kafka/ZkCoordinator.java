@@ -36,149 +36,167 @@ import org.apache.spark.streaming.receiver.Receiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("serial")
 public class ZkCoordinator implements PartitionCoordinator, Serializable {
-	public static final Logger LOG = LoggerFactory
-			.getLogger(ZkCoordinator.class);
+  public static final Logger LOG = LoggerFactory.getLogger(ZkCoordinator.class);
 
-	KafkaConfig _kafkaconfig;
-	int _partitionOwner;
-	Map<Partition, PartitionManager> _managers = new HashMap();
-	List<PartitionManager> _cachedList;
-	Long _lastRefreshTime = 0L;
-	int _refreshFreqMs;
-	DynamicPartitionConnections _connections;
-	DynamicBrokersReader _reader;
-	GlobalPartitionInformation _brokerInfo;
-	KafkaConfig _config;
-	Receiver _receiver;
-	boolean _restart;
+  KafkaConfig _kafkaconfig;
+  int _partitionOwner;
+  Map<Partition, PartitionManager> _managers =
+      new HashMap<Partition, PartitionManager>();
+  List<PartitionManager> _cachedList;
+  Long _lastRefreshTime = 0L;
+  int _refreshFreqMs;
+  DynamicPartitionConnections _connections;
+  DynamicBrokersReader _reader;
+  GlobalPartitionInformation _brokerInfo;
+  KafkaConfig _config;
+  Receiver<MessageAndMetadata> _receiver;
+  boolean _restart;
 
-	public ZkCoordinator(DynamicPartitionConnections connections,
-			KafkaConfig config, ZkState state, int partitionId,
-			Receiver receiver, boolean restart) {
-		_kafkaconfig = config;
-		_connections = connections;
-		_partitionOwner = partitionId;
-		_refreshFreqMs = config._refreshFreqSecs * 1000;
-		_reader = new DynamicBrokersReader(_kafkaconfig, state);
-		_brokerInfo = _reader.getBrokerInfo();
-		_config = config;
-		_receiver = receiver;
-		_restart = restart;
-	}
+  public ZkCoordinator(
+      DynamicPartitionConnections connections,
+        KafkaConfig config,
+        ZkState state,
+        int partitionId,
+        Receiver<MessageAndMetadata> receiver,
+        boolean restart) {
+    _kafkaconfig = config;
+    _connections = connections;
+    _partitionOwner = partitionId;
+    _refreshFreqMs = config._refreshFreqSecs * 1000;
+    _reader = new DynamicBrokersReader(_kafkaconfig, state);
+    _brokerInfo = _reader.getBrokerInfo();
+    _config = config;
+    _receiver = receiver;
+    _restart = restart;
+  }
 
-	@Override
-	public List<PartitionManager> getMyManagedPartitions() {
-		if ((System.currentTimeMillis() - _lastRefreshTime) > _refreshFreqMs) {
-			refresh();
-			_lastRefreshTime = System.currentTimeMillis();
-		}
-		_restart = false;
-		return _cachedList;
-	}
+  @Override
+  public List<PartitionManager> getMyManagedPartitions() {
+    if ((System.currentTimeMillis() - _lastRefreshTime) > _refreshFreqMs) {
+      refresh();
+      _lastRefreshTime = System.currentTimeMillis();
+    }
+    _restart = false;
+    return _cachedList;
+  }
 
-	@Override
-	public void refresh() {
-		try {
-			LOG.info("Refreshing partition manager connections");
-			_brokerInfo = _reader.getBrokerInfo();
-			Set<Partition> mine = new HashSet();
-			for (Partition partition : _brokerInfo) {
-				if (partition.partition == _partitionOwner) {
-					mine.add(partition);
-					LOG.info("Added partition index " + _partitionOwner
-							+ " for coordinator");
-				}
-			}
+  @SuppressWarnings("unchecked")
+  @Override
+  public void refresh() {
+    try {
+      LOG.info("Refreshing partition manager connections");
+      _brokerInfo = _reader.getBrokerInfo();
+      Set<Partition> mine = new HashSet<Partition>();
+      for (Partition partition : _brokerInfo) {
+        if (partition.partition == _partitionOwner) {
+          mine.add(partition);
+          LOG.info("Added partition index "
+              + _partitionOwner
+                + " for coordinator");
+        }
+      }
 
-			if (mine.size() == 0) {
+      if (mine.size() == 0) {
 
-				LOG.warn("Some issue getting Partition details.. Patrition Manager size Zero");
-				_managers.clear();
-				if (_cachedList != null) {
-					_cachedList.clear();
-				}
-				return;
-			} else {
+        LOG
+            .warn("Some issue getting Partition details.. Patrition Manager size Zero");
+        _managers.clear();
+        if (_cachedList != null) {
+          _cachedList.clear();
+        }
+        return;
+      } else {
 
-				Set<Partition> curr = _managers.keySet();
-				Set<Partition> newPartitions = new HashSet<Partition>(mine);
-				newPartitions.removeAll(curr);
+        Set<Partition> curr = _managers.keySet();
+        Set<Partition> newPartitions = new HashSet<Partition>(mine);
+        newPartitions.removeAll(curr);
 
-				Set<Partition> deletedPartitions = new HashSet<Partition>(curr);
-				deletedPartitions.removeAll(mine);
+        Set<Partition> deletedPartitions = new HashSet<Partition>(curr);
+        deletedPartitions.removeAll(mine);
 
-				LOG.info("Deleted partition managers: "
-						+ deletedPartitions.toString());
+        LOG.info("Deleted partition managers: " + deletedPartitions.toString());
 
-				for (Partition id : deletedPartitions) {
-					PartitionManager man = _managers.remove(id);
-					man.close();
-				}
-				LOG.info("New partition managers: " + newPartitions.toString());
-				
-				//Try to get the latest Fill Rate
-				
-				ZkState state = null;
-				
-				try {
-					
-					state = new ZkState((String) _config._stateConf
-							.get(Config.ZOOKEEPER_CONSUMER_CONNECTION));
-							
-					Map<Object, Object> rateJson = state.readJSON(ratePath());
-					
-					if (rateJson != null) {
-						String conId = (String) ((Map<Object, Object>) rateJson
-								.get("consumer")).get("id");
+        for (Partition id : deletedPartitions) {
+          PartitionManager man = _managers.remove(id);
+          man.close();
+        }
+        LOG.info("New partition managers: " + newPartitions.toString());
 
-						if (conId != null && conId.equalsIgnoreCase((String)_config._stateConf.get(Config.KAFKA_CONSUMER_ID))) {
+        // Try to get the latest Fill Rate
 
-							int newFetchSize = ((Long) rateJson.get("rate")).intValue();
-							
-							LOG.info("Modified Fetch Rate for topic " 
-									+ _config._stateConf.get(Config.KAFKA_TOPIC)
-									+ " to : " + newFetchSize);
-							
-							_kafkaconfig._fetchSizeBytes = newFetchSize ;
-							_kafkaconfig._bufferSizeBytes = newFetchSize ;
-						}
-					}
-				} catch (Throwable e) {
-					LOG.warn("Error reading and/or parsing at ZkNode: " + ratePath(), e);
-				}finally{
-					if(state != null)
-						state.close();
-				}
+        ZkState state = null;
 
-				for (Partition id : newPartitions) {
+        try {
 
-					PartitionManager man = new PartitionManager(
-							_connections,
-							new ZkState((String) _config._stateConf
-									.get(Config.ZOOKEEPER_CONSUMER_CONNECTION)),
-							_kafkaconfig, id, _receiver, _restart);
-					_managers.put(id, man);
-				}
+          state =
+              new ZkState((String) _config._stateConf
+                  .get(Config.ZOOKEEPER_CONSUMER_CONNECTION));
 
-				_cachedList = new ArrayList<PartitionManager>(
-						_managers.values());
-				LOG.info("Finished refreshing");
-			}
+          Map<Object, Object> rateJson = state.readJSON(ratePath());
 
-		} catch (Exception e) {
-			throw new FailedFetchException(e);
-		}
-	}
+          if (rateJson != null) {
+            String conId =
+                (String) ((Map<Object, Object>) rateJson.get("consumer"))
+                    .get("id");
 
-	@Override
-	public PartitionManager getManager(Partition partition) {
-		return _managers.get(partition);
-	}
-	
-	public String ratePath() {
-		return _config._stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH) + "/"
-				+_config._stateConf.get(Config.KAFKA_CONSUMER_ID) + "/"
-				+ _config._stateConf.get(Config.KAFKA_TOPIC) + "/newrate";
-	}
+            if (conId != null
+                && conId.equalsIgnoreCase((String) _config._stateConf
+                    .get(Config.KAFKA_CONSUMER_ID))) {
+
+              int newFetchSize = ((Long) rateJson.get("rate")).intValue();
+
+              LOG.info("Modified Fetch Rate for topic "
+                  + _config._stateConf.get(Config.KAFKA_TOPIC)
+                    + " to : "
+                    + newFetchSize);
+
+              _kafkaconfig._fetchSizeBytes = newFetchSize;
+              _kafkaconfig._bufferSizeBytes = newFetchSize;
+            }
+          }
+        } catch (Throwable e) {
+          LOG.warn("Error reading and/or parsing at ZkNode: " + ratePath(), e);
+        } finally {
+          if (state != null)
+            state.close();
+        }
+
+        for (Partition id : newPartitions) {
+
+          PartitionManager man =
+              new PartitionManager(
+                  _connections,
+                    new ZkState((String) _config._stateConf
+                        .get(Config.ZOOKEEPER_CONSUMER_CONNECTION)),
+                    _kafkaconfig,
+                    id,
+                    _receiver,
+                    _restart);
+          _managers.put(id, man);
+        }
+
+        _cachedList = new ArrayList<PartitionManager>(_managers.values());
+        LOG.info("Finished refreshing");
+      }
+
+    } catch (Exception e) {
+      throw new FailedFetchException(e);
+    }
+  }
+
+  @Override
+  public PartitionManager getManager(Partition partition) {
+    return _managers.get(partition);
+  }
+
+  public String ratePath() {
+    return _config._stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH)
+        + "/"
+          + _config._stateConf.get(Config.KAFKA_CONSUMER_ID)
+          + "/"
+          + _config._stateConf.get(Config.KAFKA_TOPIC)
+          + "/newrate";
+  }
 }

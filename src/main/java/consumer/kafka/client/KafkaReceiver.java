@@ -28,71 +28,74 @@ import consumer.kafka.KafkaConsumer;
 import consumer.kafka.MessageAndMetadata;
 import consumer.kafka.ZkState;
 
+@SuppressWarnings("serial")
 public class KafkaReceiver extends Receiver<MessageAndMetadata> {
 
-	private static final long serialVersionUID = -4927707326026616451L;
-	private final Properties _props;
-	private int _partitionId;
-	private KafkaConsumer _kConsumer;
-	private transient Thread _consumerThread;
+  private final Properties _props;
+  private int _partitionId;
+  private KafkaConsumer _kConsumer;
+  private transient Thread _consumerThread;
 
-	public KafkaReceiver(Properties props, int partitionId) {
-		super(StorageLevel.MEMORY_ONLY());
-		this._props = props;
-		_partitionId = partitionId;
-	}
+  public KafkaReceiver(Properties props, int partitionId) {
+    super(StorageLevel.MEMORY_ONLY());
+    this._props = props;
+    _partitionId = partitionId;
+  }
 
-	public KafkaReceiver(Properties props, int partitionId,
-			StorageLevel storageLevel) {
-		super(storageLevel);
-		this._props = props;
-		_partitionId = partitionId;
-	}
+  public KafkaReceiver(
+      Properties props,
+        int partitionId,
+        StorageLevel storageLevel) {
+    super(storageLevel);
+    this._props = props;
+    _partitionId = partitionId;
+  }
 
-	@Override
-	public void onStart() {
+  @Override
+  public void onStart() {
 
-		start();
+    start();
 
-	}
+  }
 
-	public void start() {
+  public void start() {
 
-		// Start the thread that receives data over a connection
-		KafkaConfig kafkaConfig = new KafkaConfig(_props);
-		ZkState zkState = new ZkState(kafkaConfig);
-		_kConsumer = new KafkaConsumer(kafkaConfig, zkState, this);
-		_kConsumer.open(_partitionId);
+    // Start the thread that receives data over a connection
+    KafkaConfig kafkaConfig = new KafkaConfig(_props);
+    ZkState zkState = new ZkState(kafkaConfig);
+    _kConsumer = new KafkaConsumer(kafkaConfig, zkState, this);
+    _kConsumer.open(_partitionId);
 
-		Thread.UncaughtExceptionHandler eh = new Thread.UncaughtExceptionHandler() {
+    Thread.UncaughtExceptionHandler eh = new Thread.UncaughtExceptionHandler() {
 
-			public void uncaughtException(Thread th, Throwable ex) {
+      public void uncaughtException(Thread th, Throwable ex) {
 
-				if (ex instanceof InterruptedException) {
+        if (ex instanceof InterruptedException) {
 
-					th.interrupt();
-					stop(" Stopping Receiver for partition " + _partitionId
-							+ " due to " + ex);
+          th.interrupt();
+          stop(" Stopping Receiver for partition "
+              + _partitionId
+                + " due to "
+                + ex);
 
-				} else {
+        } else {
 
-					restart("Restarting Receiver for Partition " + _partitionId,
-							ex, 5000);
-				}
+          restart("Restarting Receiver for Partition " + _partitionId, ex, 5000);
+        }
 
-			}
-		};
+      }
+    };
 
-		_consumerThread = new Thread(_kConsumer);
-		_consumerThread.setDaemon(true);
-		_consumerThread.setUncaughtExceptionHandler(eh);
-		_consumerThread.start();
-	}
+    _consumerThread = new Thread(_kConsumer);
+    _consumerThread.setDaemon(true);
+    _consumerThread.setUncaughtExceptionHandler(eh);
+    _consumerThread.start();
+  }
 
-	@Override
-	public void onStop() {
+  @Override
+  public void onStop() {
 
-		if (_consumerThread.isAlive())
-			_consumerThread.interrupt();
-	}
+    if (_consumerThread.isAlive())
+      _consumerThread.interrupt();
+  }
 }
