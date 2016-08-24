@@ -37,8 +37,7 @@ public class Utils {
       return ((Short) o).intValue();
     } else {
       throw new IllegalArgumentException("Don't know how to convert "
-          + o
-            + " + to int");
+          + o + " + to int");
     }
   }
 
@@ -47,5 +46,4 @@ public class Utils {
     buffer.get(ret, 0, ret.length);
     return ret;
   }
-
 }

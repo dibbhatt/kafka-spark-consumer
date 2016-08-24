@@ -41,70 +41,61 @@ public class PIDController {
 
   public int calculateRate(
       long time,
-        long batchDuration,
-        int partitionCount,
-        int fetchSizeBytes,
-        int fillFreqMs,
-        long schedulingDelay,
-        long processingDelay) {
+      long batchDuration,
+      int partitionCount,
+      int fetchSizeBytes,
+      int fillFreqMs,
+      long schedulingDelay,
+      long processingDelay) {
 
-    LOG.info("======== Rate Revision Starts ========");
+    LOG.debug("======== Rate Revision Starts ========");
     double delaySinceUpdate = (time - latestTime);
-
     int blocksPerSecond = (1000 / fillFreqMs);
-
     double fixedRate = (partitionCount * fetchSizeBytes) * blocksPerSecond;
-
     double processingDecay = (double) batchDuration / processingDelay;
-
     // in bytes / seconds
-    double processingRate =
-        ((partitionCount * fetchSizeBytes) * (1000 / fillFreqMs))
-            * processingDecay;
-
+    double processingRate = ((partitionCount * fetchSizeBytes) * (1000 / fillFreqMs)) * processingDecay;
     // in bytes / seconds
     double error = (double) (fixedRate - processingRate);
 
-    LOG.info("Fetch Size       : " + fetchSizeBytes);
-    LOG.info("Fill Freq        : " + fillFreqMs);
-    LOG.info("Batch Duration   : " + batchDuration);
-    LOG.info("Partition count  : " + partitionCount);
-    LOG.info("Scheduling Delay : " + schedulingDelay);
-    LOG.info("Processing Delay : " + processingDelay);
-    LOG.info("Fixed Rate       : " + new Double(fixedRate).intValue());
-    LOG.info("Processing rate  : " + new Double(processingRate).intValue());
-    LOG.info("Error            : " + new Double(error).intValue());
+    LOG.debug("Fetch Size       : {}", fetchSizeBytes);
+    LOG.debug("Fill Freq        : {}", fillFreqMs);
+    LOG.debug("Batch Duration   : {}", batchDuration);
+    LOG.debug("Partition count  : {}", partitionCount);
+    LOG.debug("Scheduling Delay : {}", schedulingDelay);
+    LOG.debug("Processing Delay : {}", processingDelay);
+    LOG.debug("Fixed Rate       : {}", new Double(fixedRate).intValue());
+    LOG.debug("Processing rate  : {}", new Double(processingRate).intValue());
+    LOG.debug("Error            : {}", new Double(error).intValue());
 
     // (in bytes /second)
     double historicalError = (schedulingDelay * processingRate) / 1000;
 
-    LOG.info("HistoricalError  : " + new Double(historicalError).intValue());
+    LOG.debug("HistoricalError  : {}", new Double(historicalError).intValue());
 
     // in bytes /(second)
     double dError = (error - latestError) / delaySinceUpdate;
 
-    LOG.info("Derror           : " + dError);
+    LOG.debug("Derror           : " + dError);
 
-    double newRate =
-        (fixedRate - proportional * error - integral * historicalError - derivative
-            * dError);
+    double newRate = (fixedRate 
+        - proportional * error
+        - integral * historicalError
+        - derivative * dError);
 
     newRate = (newRate / partitionCount) / blocksPerSecond;
 
-    LOG.info("Reviced   Fetch  : " + new Double(newRate).intValue());
+    LOG.debug("Reviced   Fetch  : {}", new Double(newRate).intValue());
 
-    if (newRate > fetchSizeBytes)
+    if (newRate > fetchSizeBytes) {
       newRate = fetchSizeBytes;
+    }
 
     latestError = error;
-
     int rate = new Double(newRate).intValue();
-
-    LOG.info("New Fetch Size   : " + rate);
-    LOG.info("Percent Change   : "
-        + ((double) (fetchSizeBytes - rate) / fetchSizeBytes)
-          * 100);
-    LOG.info("======== Rate Revision Starts ========");
+    LOG.debug("New Fetch Size   : {}", rate);
+    LOG.debug("Percent Change   : {}", ((double) (fetchSizeBytes - rate) / fetchSizeBytes) * 100);
+    LOG.debug("======== Rate Revision Ends ========");
 
     return new Double(newRate).intValue();
   }
@@ -126,11 +117,11 @@ public class PIDController {
     // There will be Rate Reduction from Original _fetchSizeBytes
     controller.calculateRate(
         time,
-          batchDuration,
-          topicPartition,
-          _fetchSizeBytes,
-          _fillFreqMs,
-          schedulingDelay,
-          processingDelay);
+        batchDuration,
+        topicPartition,
+        _fetchSizeBytes,
+        _fillFreqMs,
+        schedulingDelay,
+        processingDelay);
   }
 }

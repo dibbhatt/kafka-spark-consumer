@@ -36,39 +36,28 @@ public class KafkaConsumer implements Runnable, Serializable {
 
   public static final Logger LOG = LoggerFactory.getLogger(KafkaConsumer.class);
 
-  KafkaConfig _kafkaconfig;
-  PartitionCoordinator _coordinator;
-  DynamicPartitionConnections _connections;
-  ZkState _state;
-  long _lastConsumeTime = 0L;
-  int _currPartitionIndex = 0;
-  Receiver<MessageAndMetadata> _receiver;
+  private KafkaConfig _kafkaconfig;
+  private PartitionCoordinator _coordinator;
+  private DynamicPartitionConnections _connections;
+  private ZkState _state;
+  private long _lastConsumeTime = 0L;
+  private int _currPartitionIndex = 0;
+  private Receiver<MessageAndMetadata> _receiver;
 
   public KafkaConsumer(
       KafkaConfig config,
-        ZkState zkState,
-        Receiver<MessageAndMetadata> receiver) {
+      ZkState zkState,
+      Receiver<MessageAndMetadata> receiver) {
     _kafkaconfig = config;
     _state = zkState;
     _receiver = receiver;
   }
 
   public void open(int partitionId) {
-
     _currPartitionIndex = partitionId;
-    _connections =
-        new DynamicPartitionConnections(_kafkaconfig, new ZkBrokerReader(
-            _kafkaconfig,
-              _state));
-    _coordinator =
-        new ZkCoordinator(
-            _connections,
-              _kafkaconfig,
-              _state,
-              partitionId,
-              _receiver,
-              true);
-
+    _connections = new DynamicPartitionConnections(_kafkaconfig, 
+        new ZkBrokerReader(_kafkaconfig,_state));
+    _coordinator = new ZkCoordinator(_connections,_kafkaconfig,_state,partitionId,_receiver,true);
   }
 
   public void close() {
@@ -84,28 +73,20 @@ public class KafkaConsumer implements Runnable, Serializable {
     try {
       List<PartitionManager> managers = _coordinator.getMyManagedPartitions();
       if (managers == null || managers.size() == 0) {
-        LOG
-            .warn("Some issue getting Partition details.. Refreshing Corodinator..");
+        LOG.warn("Some issue getting Partition details.Refreshing Corodinator.");
         _coordinator.refresh();
       } else {
-
         managers.get(0).next();
       }
     } catch (FailedFetchException fe) {
-
       fe.printStackTrace();
-      LOG.warn("Fetch failed. Refresing Coordinator..", fe);
+      LOG.warn("Fetch failed. Refresing Coordinator.", fe);
       _coordinator.refresh();
-
     } catch (Exception ex) {
-      LOG.error("Partition "
-          + _currPartitionIndex
-            + " encountered error during createStream : "
-            + ex.getMessage());
+      LOG.error("Partition " + _currPartitionIndex+ " encountered error during createStream", ex);
       ex.printStackTrace();
       throw ex;
     }
-
   }
 
   public void deactivate() {
@@ -118,24 +99,20 @@ public class KafkaConsumer implements Runnable, Serializable {
 
   @Override
   public void run() {
-
     try {
-
       while (!_receiver.isStopped()) {
-
         long timeSinceLastPull = System.currentTimeMillis() - _lastConsumeTime;
         if (timeSinceLastPull >= _kafkaconfig._fillFreqMs) {
           _lastConsumeTime = System.currentTimeMillis();
           this.createStream();
         } else {
           long waitTime = _kafkaconfig._fillFreqMs - timeSinceLastPull;
-          if (waitTime > 0)
+          if (waitTime > 0) {
             Thread.sleep(waitTime);
+          }
         }
       }
-
     } catch (Exception ex) {
-
       try {
         this.close();
         throw ex;
@@ -143,7 +120,5 @@ public class KafkaConsumer implements Runnable, Serializable {
         e.printStackTrace();
       }
     }
-
   }
-
 }

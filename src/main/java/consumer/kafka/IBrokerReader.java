@@ -25,8 +25,6 @@
 package consumer.kafka;
 
 public interface IBrokerReader {
-
   public GlobalPartitionInformation getCurrentBrokers();
-
   public void close();
 }

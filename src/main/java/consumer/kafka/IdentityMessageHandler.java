@@ -22,8 +22,6 @@ public class IdentityMessageHandler implements KafkaMessageHandler {
 
   @Override
   public MessageAndMetadata process(MessageAndMetadata mmeta) throws Exception {
-
     return mmeta;
   }
-
 }

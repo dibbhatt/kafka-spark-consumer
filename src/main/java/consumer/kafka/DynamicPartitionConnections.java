@@ -42,6 +42,7 @@ public class DynamicPartitionConnections implements Serializable {
       .getLogger(DynamicPartitionConnections.class);
 
   class ConnectionInfo implements Serializable {
+
     SimpleConsumer consumer;
     Set<Integer> partitions = new HashSet<Integer>();
 
@@ -50,32 +51,32 @@ public class DynamicPartitionConnections implements Serializable {
     }
   }
 
-  Map<Broker, ConnectionInfo> _connections =
-      new HashMap<Broker, ConnectionInfo>();
+  Map<Broker, ConnectionInfo> _connections = new HashMap<Broker, ConnectionInfo>();
   KafkaConfig _config;
   IBrokerReader _reader;
 
   public DynamicPartitionConnections(
       KafkaConfig config,
-        IBrokerReader brokerReader) {
+      IBrokerReader brokerReader) {
     _config = config;
     _reader = brokerReader;
   }
 
   public SimpleConsumer register(Partition partition) {
-    Broker broker =
-        _reader.getCurrentBrokers().getBrokerFor(partition.partition);
+    Broker broker = _reader.getCurrentBrokers().getBrokerFor(partition.partition);
     return register(broker, partition.partition);
   }
 
   public SimpleConsumer register(Broker host, int partition) {
     if (!_connections.containsKey(host)) {
-      _connections.put(host, new ConnectionInfo(new SimpleConsumer(
-          host.host,
+      _connections.put(host, new ConnectionInfo(
+          new SimpleConsumer(
+            host.host,
             host.port,
             _config._socketTimeoutMs,
             _config._bufferSizeBytes,
-            (String) _config._stateConf.get(Config.KAFKA_CONSUMER_ID))));
+            (String) _config._stateConf.get(Config.KAFKA_CONSUMER_ID))
+          ));
     }
     ConnectionInfo info = _connections.get(host);
     info.partitions.add(partition);

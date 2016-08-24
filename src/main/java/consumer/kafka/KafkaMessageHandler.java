@@ -19,6 +19,5 @@
 package consumer.kafka;
 
 public interface KafkaMessageHandler {
-
   public MessageAndMetadata process(MessageAndMetadata mmeta) throws Exception;
 }

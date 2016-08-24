@@ -53,9 +53,7 @@ public class KafkaReceiver extends Receiver<MessageAndMetadata> {
 
   @Override
   public void onStart() {
-
     start();
-
   }
 
   public void start() {
@@ -65,27 +63,19 @@ public class KafkaReceiver extends Receiver<MessageAndMetadata> {
     ZkState zkState = new ZkState(kafkaConfig);
     _kConsumer = new KafkaConsumer(kafkaConfig, zkState, this);
     _kConsumer.open(_partitionId);
-
     Thread.UncaughtExceptionHandler eh = new Thread.UncaughtExceptionHandler() {
-
       public void uncaughtException(Thread th, Throwable ex) {
-
         if (ex instanceof InterruptedException) {
-
           th.interrupt();
           stop(" Stopping Receiver for partition "
               + _partitionId
                 + " due to "
                 + ex);
-
         } else {
-
           restart("Restarting Receiver for Partition " + _partitionId, ex, 5000);
         }
-
       }
     };
-
     _consumerThread = new Thread(_kConsumer);
     _consumerThread.setDaemon(true);
     _consumerThread.setUncaughtExceptionHandler(eh);
@@ -94,7 +84,6 @@ public class KafkaReceiver extends Receiver<MessageAndMetadata> {
 
   @Override
   public void onStop() {
-
     if (_consumerThread.isAlive())
       _consumerThread.interrupt();
   }

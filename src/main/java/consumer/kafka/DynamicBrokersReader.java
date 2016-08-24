@@ -73,8 +73,7 @@ public class DynamicBrokersReader implements Serializable {
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
-    LOG.info("Read partition info from zookeeper: "
-        + globalPartitionInformation);
+    LOG.debug("Read partition info from zookeeper: {}",globalPartitionInformation );
     return globalPartitionInformation;
   }
 

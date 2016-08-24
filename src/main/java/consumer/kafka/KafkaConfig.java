@@ -29,8 +29,8 @@ public class KafkaConfig implements Serializable {
   public int _fetchSizeBytes = 512 * 1024;
   public int _fillFreqMs = 200;
   public int _minFetchSizeBytes = 1 * 1024;
-  public int _bufferSizeBytes = _fetchSizeBytes;
-  public int _refreshFreqSecs = 60;
+  public int _bufferSizeBytes = _fetchSizeBytes * 2;
+  public int _refreshFreqSecs = 300;
   public int _socketTimeoutMs = 10000;
   public boolean _forceFromStart = false;
   public boolean _stopGracefully = true;
@@ -39,9 +39,9 @@ public class KafkaConfig implements Serializable {
   public boolean _useStartOffsetTimeIfOffsetOutOfRange = true;
   public long _stateUpdateIntervalMs = 2000;
   public Map<String, String> _stateConf;
+  public int _numFetchToBuffer = 1;
 
   // Parameters related to Back Pressure
-
   public double _proportional = 0.75;
   public double _integral = 0.15;
   public double _derivative = 0;
@@ -54,50 +54,49 @@ public class KafkaConfig implements Serializable {
     String brokerZkPath = props.getProperty("zookeeper.broker.path");
 
     String consumerZkPath = props.getProperty("zookeeper.consumer.path");
-    String consumerConnection =
-        props.getProperty("zookeeper.consumer.connection");
+    String consumerConnection = props.getProperty("zookeeper.consumer.connection");
     String consumerId = props.getProperty("kafka.consumer.id");
 
-    if (props.getProperty("consumer.forcefromstart") != null)
-      _forceFromStart =
-          Boolean.parseBoolean(props.getProperty("consumer.forcefromstart"));
-
-    if (props.getProperty("consumer.fetchsizebytes") != null) {
-      _fetchSizeBytes =
-          Integer.parseInt(props.getProperty("consumer.fetchsizebytes"));
-      _bufferSizeBytes = _fetchSizeBytes;
+    if (props.getProperty("consumer.forcefromstart") != null) {
+      _forceFromStart = Boolean.parseBoolean(props.getProperty("consumer.forcefromstart"));
     }
 
-    if (props.getProperty("consumer.min.fetchsizebytes") != null)
-      _minFetchSizeBytes =
-          Integer.parseInt(props.getProperty("consumer.min.fetchsizebytes"));
+    if (props.getProperty("consumer.num_fetch_to_buffer") != null) {
+      _numFetchToBuffer = Integer.parseInt(props.getProperty("consumer.num_fetch_to_buffer"));
+    }
 
-    if (props.getProperty("consumer.fillfreqms") != null)
+    if (props.getProperty("consumer.fetchsizebytes") != null) {
+      _fetchSizeBytes = Integer.parseInt(props.getProperty("consumer.fetchsizebytes"));
+      _bufferSizeBytes = _fetchSizeBytes * 2;
+    }
+
+    if (props.getProperty("consumer.min.fetchsizebytes") != null) {
+      _minFetchSizeBytes = Integer.parseInt(props.getProperty("consumer.min.fetchsizebytes"));
+    }
+
+    if (props.getProperty("consumer.fillfreqms") != null) {
       _fillFreqMs = Integer.parseInt(props.getProperty("consumer.fillfreqms"));
+    }
 
-    if (props.getProperty("consumer.stopgracefully") != null)
-      _stopGracefully =
-          Boolean.parseBoolean(props.getProperty("consumer.stopgracefully"));
+    if (props.getProperty("consumer.stopgracefully") != null) {
+      _stopGracefully = Boolean.parseBoolean(props.getProperty("consumer.stopgracefully"));
+    }
 
-    if (props.getProperty("consumer.backpressure.enabled") != null)
-      _backpressureEnabled =
-          Boolean.parseBoolean(props
-              .getProperty("consumer.backpressure.enabled"));
+    if (props.getProperty("consumer.backpressure.enabled") != null) {
+      _backpressureEnabled = Boolean.parseBoolean(props.getProperty("consumer.backpressure.enabled"));
+    }
 
-    if (props.getProperty("consumer.backpressure.proportional") != null)
-      _proportional =
-          Double.parseDouble(props
-              .getProperty("consumer.backpressure.proportional"));
+    if (props.getProperty("consumer.backpressure.proportional") != null) {
+      _proportional = Double.parseDouble(props.getProperty("consumer.backpressure.proportional"));
+    }
 
-    if (props.getProperty("consumer.backpressure.integral") != null)
-      _integral =
-          Double.parseDouble(props
-              .getProperty("consumer.backpressure.integral"));
+    if (props.getProperty("consumer.backpressure.integral") != null) {
+      _integral = Double.parseDouble(props.getProperty("consumer.backpressure.integral"));
+    }
 
-    if (props.getProperty("consumer.backpressure.derivative") != null)
-      _derivative =
-          Double.parseDouble(props
-              .getProperty("consumer.backpressure.derivative"));
+    if (props.getProperty("consumer.backpressure.derivative") != null) {
+      _derivative = Double.parseDouble(props.getProperty("consumer.backpressure.derivative"));
+    }
 
     _stateConf = new HashMap<String, String>();
     _stateConf.put(Config.ZOOKEEPER_HOSTS, zkHost);
@@ -108,10 +107,7 @@ public class KafkaConfig implements Serializable {
     _stateConf.put(Config.ZOOKEEPER_CONSUMER_PATH, consumerZkPath);
     _stateConf.put(Config.ZOOKEEPER_CONSUMER_CONNECTION, consumerConnection);
     _stateConf.put(Config.KAFKA_CONSUMER_ID, consumerId);
-    _stateConf.put(Config.KAFKA_MESSAGE_HANDLER_CLASS, props.getProperty(
-        "kafka.message.handler.class",
-          "com.instartlogic.calves.kafka.spark.IdentityMessageHandler"));
-
+    _stateConf.put(Config.KAFKA_MESSAGE_HANDLER_CLASS,props.getProperty(
+        "kafka.message.handler.class","com.instartlogic.calves.kafka.spark.IdentityMessageHandler"));
   }
-
 }

@@ -49,9 +49,9 @@ public class KafkaUtils {
 
   public static long getOffset(
       SimpleConsumer consumer,
-        String topic,
-        int partition,
-        KafkaConfig config) {
+      String topic,
+      int partition,
+      KafkaConfig config) {
     long startOffsetTime = kafka.api.OffsetRequest.LatestTime();
     if (config._forceFromStart) {
       startOffsetTime = config._startOffsetTime;
@@ -61,24 +61,19 @@ public class KafkaUtils {
 
   public static long getOffset(
       SimpleConsumer consumer,
-        String topic,
-        int partition,
-        long startOffsetTime) {
+      String topic,
+      int partition,
+      long startOffsetTime) {
     TopicAndPartition topicAndPartition =
         new TopicAndPartition(topic, partition);
     Map<TopicAndPartition, PartitionOffsetRequestInfo> requestInfo =
         new HashMap<TopicAndPartition, PartitionOffsetRequestInfo>();
-    requestInfo.put(topicAndPartition, new PartitionOffsetRequestInfo(
-        startOffsetTime,
-          1));
-    OffsetRequest request =
-        new OffsetRequest(
-            requestInfo,
-              kafka.api.OffsetRequest.CurrentVersion(),
-              consumer.clientId());
+    requestInfo.put(topicAndPartition,
+        new PartitionOffsetRequestInfo(startOffsetTime,1));
+    OffsetRequest request = new OffsetRequest(
+        requestInfo,kafka.api.OffsetRequest.CurrentVersion(),consumer.clientId());
 
-    long[] offsets =
-        consumer.getOffsetsBefore(request).offsets(topic, partition);
+    long[] offsets = consumer.getOffsetsBefore(request).offsets(topic, partition);
     if (offsets.length > 0) {
       return offsets[0];
     } else {
@@ -88,44 +83,34 @@ public class KafkaUtils {
 
   public static FetchResponse fetchMessages(
       KafkaConfig config,
-        SimpleConsumer consumer,
-        Partition partition,
-        long offset) {
+      SimpleConsumer consumer,
+      Partition partition,
+      long offset) {
     String topic = (String) config._stateConf.get(Config.KAFKA_TOPIC);
     int partitionId = partition.partition;
 
-    // for (int errors = 0; errors < 2 && msgs == null; errors++) {
-
-    LOG.info("Fetching from Kafka for partition "
-        + partition.partition
-          + " for fetchSize "
-          + config._fetchSizeBytes
-          + " and bufferSize "
-          + consumer.bufferSize());
+    LOG.debug("Fetching from Kafka for partition {} for fetchSize {} and bufferSize {}"
+        ,partition.partition, config._fetchSizeBytes, consumer.bufferSize());
 
     FetchRequestBuilder builder = new FetchRequestBuilder();
-    FetchRequest fetchRequest =
-        builder
-            .addFetch(topic, partitionId, offset, config._fetchSizeBytes)
-              .clientId(
-                  (String) config._stateConf.get(Config.KAFKA_CONSUMER_ID))
-              .build();
+    FetchRequest fetchRequest = builder
+        .addFetch(topic, partitionId, offset, config._fetchSizeBytes)
+        .clientId((String) config._stateConf.get(Config.KAFKA_CONSUMER_ID))
+        .build();
     FetchResponse fetchResponse;
     try {
       fetchResponse = consumer.fetch(fetchRequest);
     } catch (Exception e) {
       if (e instanceof ConnectException
           || e instanceof SocketTimeoutException
-            || e instanceof IOException
-            || e instanceof UnresolvedAddressException) {
-
-        LOG.warn("Network error when fetching messages:", e);
+          || e instanceof IOException
+          || e instanceof UnresolvedAddressException) {
+        LOG.error("Network error when fetching messages:", e);
         throw new FailedFetchException(e);
       } else {
         throw new RuntimeException(e);
       }
     }
-
     return fetchResponse;
   }
 }

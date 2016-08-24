@@ -42,24 +42,21 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("serial")
 public class ZkState implements Serializable {
   public static final Logger LOG = LoggerFactory.getLogger(ZkState.class);
-  transient CuratorFramework _curator;
+  private transient CuratorFramework _curator;
 
-  private CuratorFramework newCurator(Map<String, String> stateConf)
-      throws Exception {
-    Integer port =
-        Integer.parseInt((String) stateConf.get(Config.ZOOKEEPER_PORT));
+  private CuratorFramework newCurator(Map<String, String> stateConf) throws Exception {
+    Integer port = Integer.parseInt((String) stateConf.get(Config.ZOOKEEPER_PORT));
     String serverPorts = "";
-    List<String> zkServers =
-        new ArrayList<String>(Arrays.asList(((String) stateConf
-            .get(Config.ZOOKEEPER_HOSTS)).split(",")));
+    List<String> zkServers = new ArrayList<String>(
+        Arrays.asList(((String) stateConf.get(Config.ZOOKEEPER_HOSTS)).split(",")));
     for (String server : zkServers) {
       serverPorts = serverPorts + server + ":" + port + ",";
     }
     return CuratorFrameworkFactory.newClient(
         serverPorts,
-          120000,
-          120000,
-          new RetryNTimes(5, 1000));
+        120000,
+        120000,
+        new RetryNTimes(5, 1000));
   }
 
   public CuratorFramework getCurator() {
@@ -68,7 +65,6 @@ public class ZkState implements Serializable {
   }
 
   public ZkState(KafkaConfig config) {
-
     try {
       _curator = newCurator(config._stateConf);
       LOG.info("Starting curator service");
@@ -80,14 +76,12 @@ public class ZkState implements Serializable {
   }
 
   public ZkState(String connectionStr) {
-
     try {
-      _curator =
-          CuratorFrameworkFactory.newClient(
+      _curator = CuratorFrameworkFactory.newClient(
               connectionStr,
-                120000,
-                120000,
-                new RetryNTimes(5, 1000));
+              120000,
+              120000,
+              new RetryNTimes(5, 1000));
       LOG.info("Starting curator service");
       _curator.start();
     } catch (Exception e) {
@@ -97,16 +91,15 @@ public class ZkState implements Serializable {
   }
 
   public synchronized void writeJSON(String path, Map<Object, Object> data) {
-    LOG.info("Writing " + path + " the data " + data.toString());
-    writeBytes(path, JSONValue.toJSONString(data).getBytes(
-        Charset.forName("UTF-8")));
+    LOG.debug("Writing to path : {} json: {}", path, data.toString());
+    writeBytes(path, JSONValue.toJSONString(data).getBytes(Charset.forName("UTF-8")));
   }
 
   public void writeBytes(String path, byte[] bytes) {
     try {
       if (_curator.checkExists().forPath(path) == null) {
-        _curator.create().creatingParentsIfNeeded().withMode(
-            CreateMode.PERSISTENT).forPath(path, bytes);
+        _curator.create().creatingParentsIfNeeded()
+          .withMode(CreateMode.PERSISTENT).forPath(path, bytes);
       } else {
         _curator.setData().forPath(path, bytes);
       }

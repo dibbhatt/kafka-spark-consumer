@@ -35,11 +35,10 @@ public class ZkBrokerReader implements IBrokerReader, Serializable {
   public static final Logger LOG = LoggerFactory
       .getLogger(ZkBrokerReader.class);
 
-  GlobalPartitionInformation _cachedBrokers;
-  DynamicBrokersReader _reader;
-  long _lastRefreshTimeMs;
-
-  long refreshMillis;
+  private GlobalPartitionInformation _cachedBrokers;
+  private DynamicBrokersReader _reader;
+  private long _lastRefreshTimeMs;
+  private long refreshMillis;
 
   public ZkBrokerReader(KafkaConfig config, ZkState zkState) {
     _reader = new DynamicBrokersReader(config, zkState);
@@ -53,9 +52,7 @@ public class ZkBrokerReader implements IBrokerReader, Serializable {
   public GlobalPartitionInformation getCurrentBrokers() {
     long currTime = System.currentTimeMillis();
     if (currTime > _lastRefreshTimeMs + refreshMillis) {
-      LOG.info("brokers need refreshing because "
-          + refreshMillis
-            + "ms have expired");
+      LOG.info("brokers need refreshing because {} ms have expired", refreshMillis);
       _cachedBrokers = _reader.getBrokerInfo();
       _lastRefreshTimeMs = currTime;
     }

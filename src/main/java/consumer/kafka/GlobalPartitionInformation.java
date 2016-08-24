@@ -34,10 +34,7 @@ import java.util.TreeMap;
 import com.google.common.base.Objects;
 
 @SuppressWarnings("serial")
-public class GlobalPartitionInformation
-    implements
-      Iterable<Partition>,
-      Serializable {
+public class GlobalPartitionInformation implements Iterable<Partition>,Serializable {
 
   private Map<Integer, Broker> partitionMap;
 
@@ -67,9 +64,7 @@ public class GlobalPartitionInformation
   }
 
   public Iterator<Partition> iterator() {
-    final Iterator<Map.Entry<Integer, Broker>> iterator =
-        partitionMap.entrySet().iterator();
-
+    final Iterator<Map.Entry<Integer, Broker>> iterator = partitionMap.entrySet().iterator();
     return new Iterator<Partition>() {
 
       public boolean hasNext() {
