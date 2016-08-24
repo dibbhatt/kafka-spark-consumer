@@ -8,7 +8,6 @@ object LowLevelKafkaConsumer {
   def main(arg: Array[String]): Unit = {
 
     import org.apache.log4j.{Level, Logger}
-
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
 
@@ -32,24 +31,23 @@ object LowLevelKafkaConsumer {
     val zkports = "2181"
     val brokerPath = "/brokers"
 
-  //Specify number of Receivers you need. 
+    //Specify number of Receivers you need. 
     val numberOfReceivers = 1
 
-  //The number of partitions for the topic will be figured out automatically
-  //However, it can be manually specified by adding kafka.partitions.number property
-    val kafkaProperties: Map[String, String] = Map("zookeeper.hosts" -> zkhosts,
-                                                   "zookeeper.port" -> zkports,
-                                                   "zookeeper.broker.path" -> brokerPath ,
-                                                   "kafka.topic" -> topic,
-                                                   "zookeeper.consumer.connection" -> "x.x.x.x:2181",
-                                                   "zookeeper.consumer.path" -> "/spark-kafka",
-                                                   "kafka.consumer.id" -> "kafka-consumer",
-                                                   //optional properties
-                                                   "consumer.forcefromstart" -> "true",
-                                                   "consumer.backpressure.enabled" -> "true",
-                                                   "consumer.fetchsizebytes" -> "1048576",
-                                                   "consumer.fillfreqms" -> "250",
-                                                   "consumer.num_fetch_to_buffer" -> "1")
+    val kafkaProperties: Map[String, String] = 
+	Map("zookeeper.hosts" -> zkhosts,
+        "zookeeper.port" -> zkports,
+        "zookeeper.broker.path" -> brokerPath ,
+        "kafka.topic" -> topic,
+        "zookeeper.consumer.connection" -> "x.x.x.x:2181",
+        "zookeeper.consumer.path" -> "/spark-kafka",
+        "kafka.consumer.id" -> "kafka-consumer",
+        //optional properties
+        "consumer.forcefromstart" -> "true",
+        "consumer.backpressure.enabled" -> "true",
+        "consumer.fetchsizebytes" -> "1048576",
+        "consumer.fillfreqms" -> "250",
+        "consumer.num_fetch_to_buffer" -> "1")
 
     val props = new java.util.Properties()
     kafkaProperties foreach { case (key,value) => props.put(key, value)}
