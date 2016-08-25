@@ -135,7 +135,7 @@ public class PartitionManager implements Serializable {
       LOG.info("Topology change detected and reset from start forced, using configuration to determine offset");
     } else {
       if (_restart && processOffset != null && processOffset < jsonOffset) {
-        _lastComittedOffset = processOffset;
+        _lastComittedOffset = processOffset + 1;
       } else {
         _lastComittedOffset = jsonOffset;
       }
