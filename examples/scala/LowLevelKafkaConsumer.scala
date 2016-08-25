@@ -21,12 +21,9 @@ object LowLevelKafkaConsumer {
       .set("spark.streaming.unpersist", "true")
 
     val sc = new SparkContext(conf)
-
-    //Might want to uncomment and add the jars if you are running on standalone mode.
-    sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.7-jar-with-dependencies.jar")
     val ssc = new StreamingContext(sc, Seconds(10))
 
-    val topic = "mytopic"
+    val topic = "xxxx"
     val zkhosts = "x.x.x.x"
     val zkports = "2181"
     val brokerPath = "/brokers"

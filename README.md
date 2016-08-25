@@ -8,9 +8,9 @@ This utility will help to pull messages from Kafka using Spark Streaming and hav
 
 This Consumer have implemented a Custom Reliable Receiver which uses low level Kafka Consumer API to fetch messages from Kafka and store every received block in Spark BlockManager. The logic will automatically detect number of partitions for a topic and spawn as many Kafka Receiver based on configured number of Receivers. Each Receiver can fetch messages from one or more Kafka Partitions.  Receiver commit the Kafka offsets of Received blocks once store to Spark BlockManager is successful.
 
-e.g. if you have 100 partitions of a Topic, and you need 20 Receivers, each Receiver will handle 5 partition. 
+e.g. if Kafka have 100 partitions of a Topic, and Spark Consumer if configured with 20 Receivers, each Receiver will handle 5 partition. 
 
-In your driver code , you can launch the Receivers by calling **ReceiverLauncher.launch**
+In Spark driver code , Receivers is launched by calling **ReceiverLauncher.launch**
 
 Please see Java or Scala code example on how to use this Low Level Consumer
 
@@ -48,7 +48,7 @@ And Use Below Dependency in your Maven
 		<dependency>
 				<groupId>kafka.spark.consumer</groupId>
 				<artifactId>kafka-spark-consumer</artifactId>
-				<version>1.0.7</version>
+				<version>1.0.8</version>
 		</dependency>
 
 # Accessing from Spark Packages
@@ -58,18 +58,18 @@ And Use Below Dependency in your Maven
 Include this package in your Spark Applications using:
 
 * spark-shell, pyspark, or spark-submit
-	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.7
+	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.8
 * sbt
 
 If you use the sbt-spark-package plugin, in your sbt build file, add:
 
-	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.7"
+	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.8"
 
 Otherwise,
 
 	resolvers += "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven"
 			  
-	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.7"
+	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.8"
 
 
 * Maven
@@ -81,7 +81,7 @@ In your pom.xml, add:
 	  <dependency>
 		<groupId>dibbhatt</groupId>
 		<artifactId>kafka-spark-consumer</artifactId>
-		<version>1.0.7</version>
+		<version>1.0.8</version>
 	  </dependency>
 	</dependencies>
 	<repositories>
@@ -105,14 +105,12 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
 	* **zookeeper.broker.path**=/brokers
 * Kafka Topic to consume
 	* **kafka.topic**=topic-name
-
 * Consumer ZK quorum details. Used to store the consumed offset.
 	* **zookeeper.consumer.connection**=host1:2181,host2:2181
 * ZK Path for storing Kafka Consumer offset. Path will be automatically created
 	* **zookeeper.consumer.path**=/spark-kafka
 * Kafka Consumer ID. Identifier of the Consumer
 	* **kafka.consumer.id**=consumer-id
-
 * OPTIONAL - Force From Start . Default Consumer Starts from Latest offset.
 	* **consumer.forcefromstart**=true
 * OPTIONAL - Fetch Size in Bytes . Default 512 KB
@@ -193,7 +191,7 @@ The src/main/java/consumer/kafka/client/SampleConsumer.java is the sample Java c
     val sc = new SparkContext(conf)
 
     //Might want to uncomment and add the jars if you are running on standalone mode.
-    sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.7-jar-with-dependencies.jar")
+    sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.8-jar-with-dependencies.jar")
     val ssc = new StreamingContext(sc, Seconds(10))
 
     val topic = "mytopic"
@@ -258,7 +256,7 @@ Receiver receives a Block of Data equal to configurable FetchSize from Kafka eve
 
 Every write to Spark Block Manager creates one Partition for underlying RDD. Say for given Batch Interval if there are N blocks written by all Receiving Threads, the RDD for that batch will have N Partition . 
 
-Receiver can write One Block of data pulled from Kafka during every Fetch, or can merge multiple Fetches together . This can be used to further control the RDD partitions. This is controlled by consumer.num_fetch_to_buffer property ( default is 1). Receiver wraps every messages of a given Block with some additional MetaData like message offset and kafka Partition ID. 
+Receiver can write One Block of data pulled from Kafka during every Fetch, or can merge multiple Fetches together . This can be used to further control the RDD partitions. This is controlled by **consumer.num_fetch_to_buffer** property ( default is 1). Receiver wraps every messages of a given Block with some additional MetaData like message offset and kafka Partition ID. 
 
 As every Receiver thread fetch from single Kafka partition, blocks written by any given Receiver thread will contains the messages (and its MetaData) from same Kafka partition. Which mean every partition of a RDD will have messages belongs to single Kafka partition . Also as the messages in given Block are always in ascending order, if you get the highest offset of a given RDD partition,  that will be the highest offset for a Kafka partition for the same RDD partition. 
 
@@ -319,7 +317,7 @@ With this default settings, let assume your Kafka Topic have 5 partitions, and y
 
 512 KB x ( 10 seconds / 200 ms ) x 5 = 128 MB of data for every Batch.
 
-If you need higher rate, you can increase the _fetchSizeBytes (via consumer.fetchsizebytes property) , or if you need less number of Block generated you can increase _fillFreqMs ( via consumer.fillfreqms property).
+If you need higher rate, you can increase the _fetchSizeBytes (via **consumer.fetchsizebytes** property) , or if you need less number of Block generated you can increase _fillFreqMs ( via **consumer.fillfreqms** property).
 
 These two parameter need to be carefully tuned keeping in mind your downstream processing rate and your memory settings.
 
@@ -338,9 +336,9 @@ If you increase any or all of these , your damping factor will be higher. So if 
 
 You can control the PID values by settings the Properties below.
 
-* consumer.backpressure.proportional
-* consumer.backpressure.integral
-* consumer.backpressure.derivative
+* **consumer.backpressure.proportional**
+* **consumer.backpressure.integral**
+* **consumer.backpressure.derivative**
 
 
 # Running Spark Kafka Consumer
@@ -355,7 +353,7 @@ This will start the Spark Receiver and Fetch Kafka Messages for every partition 
 
 e.g. to Test Consumer provided in the package with your Kafka settings please modify it to point to your Kafka and use below command for spark submit. You may need to change the Spark-Version and Kafka-Version in pom.xml.
 
-./bin/spark-submit --class consumer.kafka.client.SampleConsumer --master spark://x.x.x.x:7077 --executor-memory 1G /<Path_To>/kafka-spark-consumer-1.0.7-jar-with-dependencies.jar
+./bin/spark-submit --class consumer.kafka.client.SampleConsumer --master spark://x.x.x.x:7077 --executor-memory 1G /<Path_To>/kafka-spark-consumer-1.0.8-jar-with-dependencies.jar
 
 
 

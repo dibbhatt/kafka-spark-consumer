@@ -17,7 +17,7 @@
 
   <groupId>kafka.spark.consumer</groupId>
   <artifactId>kafka-spark-consumer</artifactId>
-  <version>1.0.7</version>
+  <version>1.0.8</version>
   <packaging>jar</packaging>
 
   <name>kafka-spark-consumer</name>
