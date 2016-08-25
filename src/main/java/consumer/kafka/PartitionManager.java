@@ -303,8 +303,8 @@ public class PartitionManager implements Serializable {
       LOG.debug("Committed offset {} for {} for consumer: {}",
           _lastComittedOffset,_partition,_consumerId);
     } else {
-      LOG.warn("Last Enqueued offset {} not incremented since previous Comitted Offset {}"
-          + " for partition  {} for Consumer {}. Some issue in Process!!",
+      LOG.debug("Last Enqueued offset {} not incremented since previous Comitted Offset {}"
+          + " for partition  {} for Consumer {}.",
           _lastEnquedOffset,_lastComittedOffset,_partition, _consumerId);
     }
   }
