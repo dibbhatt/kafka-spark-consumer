@@ -337,7 +337,7 @@ public class PartitionManager implements Serializable {
 
   public void close() {
     try {
-      LOG.info("Flush BlockManager Write for Partition {} ", _partition.partition);
+      LOG.info("Flush BlockManager Write for Partition {}", _partition.partition);
       _numFetchToBuffer = _kafkaconfig._numFetchToBuffer;
       triggerBlockManagerWrite();
       _connections.unregister(_partition.host, _partition.partition);
