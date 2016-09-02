@@ -18,25 +18,22 @@
 
 package consumer.kafka;
 
+import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
+import org.apache.spark.api.java.function.VoidFunction;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaPairDStream;
 import org.apache.spark.streaming.dstream.DStream;
-
 import scala.Tuple2;
 import scala.reflect.ClassTag;
-
-import com.google.common.collect.ImmutableMap;
 
 public class ProcessedOffsetManager {
 
@@ -73,7 +70,7 @@ public class ProcessedOffsetManager {
     JavaPairDStream<Integer, Long> partitonOffsetStream = unionStreams.mapPartitionsToPair
         (new PairFlatMapFunction<Iterator<MessageAndMetadata>, Integer, Long>() {
           @Override
-          public Iterable<Tuple2<Integer, Long>> call(Iterator<MessageAndMetadata> entry) throws Exception {
+          public Iterator<Tuple2<Integer, Long>> call(Iterator<MessageAndMetadata> entry) throws Exception {
             MessageAndMetadata mmeta = null;
             List<Tuple2<Integer, Long>> l = new ArrayList<Tuple2<Integer, Long>>();
             while(entry.hasNext()) {
@@ -82,7 +79,7 @@ public class ProcessedOffsetManager {
             if(mmeta != null) {
               l.add(new Tuple2<Integer, Long>(mmeta.getPartition().partition,mmeta.getOffset()));
             }
-            return l;
+            return l.iterator();
           }
     });
     JavaPairDStream<Integer, Iterable<Long>> partitonOffset = partitonOffsetStream.groupByKey(1);
@@ -91,9 +88,9 @@ public class ProcessedOffsetManager {
 
   @SuppressWarnings("deprecation")
   public static void persists(JavaPairDStream<Integer, Iterable<Long>> partitonOffset, Properties props) {
-    partitonOffset.foreachRDD(new Function<JavaPairRDD<Integer,Iterable<Long>>, Void>() {
+    partitonOffset.foreachRDD(new VoidFunction<JavaPairRDD<Integer,Iterable<Long>>>() {
       @Override
-      public Void call(JavaPairRDD<Integer, Iterable<Long>> po) throws Exception {
+      public void call(JavaPairRDD<Integer, Iterable<Long>> po) throws Exception {
         List<Tuple2<Integer, Iterable<Long>>> poList = po.collect();
         Map<Integer, Long> partitionOffsetMap = new HashMap<Integer, Long>();
         for(Tuple2<Integer, Iterable<Long>> tuple : poList) {
@@ -102,7 +99,6 @@ public class ProcessedOffsetManager {
           partitionOffsetMap.put(partition, offset);
         }
         persistProcessedOffsets(props, partitionOffsetMap);
-        return null;
       }
       public <T extends Comparable<T>> T getMaximum(Iterable<T> values) {
         T max = null;
@@ -124,7 +120,7 @@ public class ProcessedOffsetManager {
     JavaPairDStream<Integer, Long> partitonOffsetStream = javaDStream.mapPartitionsToPair
         (new PairFlatMapFunction<Iterator<MessageAndMetadata>, Integer, Long>() {
           @Override
-          public Iterable<Tuple2<Integer, Long>> call(Iterator<MessageAndMetadata> entry)
+          public Iterator<Tuple2<Integer, Long>> call(Iterator<MessageAndMetadata> entry)
               throws Exception {
             MessageAndMetadata mmeta = null;
             List<Tuple2<Integer, Long>> l = new ArrayList<Tuple2<Integer, Long>>();
@@ -134,7 +130,7 @@ public class ProcessedOffsetManager {
             if(mmeta != null) {
               l.add(new Tuple2<Integer, Long>(mmeta.getPartition().partition,mmeta.getOffset()));
             }
-            return l;
+            return l.iterator();
           }
     });
     JavaPairDStream<Integer, Iterable<Long>> partitonOffset = partitonOffsetStream.groupByKey(1);
@@ -147,9 +143,9 @@ public class ProcessedOffsetManager {
         ScalaUtil.<Integer, Iterable<Long>>getTuple2ClassTag();
     JavaDStream<Tuple2<Integer, Iterable<Long>>> jpartitonOffset = 
         new JavaDStream<Tuple2<Integer, Iterable<Long>>>(partitonOffset, tuple2ClassTag);
-    jpartitonOffset.foreachRDD(new Function<JavaRDD<Tuple2<Integer, Iterable<Long>>>, Void>() {
+    jpartitonOffset.foreachRDD(new VoidFunction<JavaRDD<Tuple2<Integer, Iterable<Long>>>>() {
       @Override
-      public Void call(JavaRDD<Tuple2<Integer, Iterable<Long>>> po) throws Exception {
+      public void call(JavaRDD<Tuple2<Integer, Iterable<Long>>> po) throws Exception {
         List<Tuple2<Integer, Iterable<Long>>> poList = po.collect();
         Map<Integer, Long> partitionOffsetMap = new HashMap<Integer, Long>();
         for(Tuple2<Integer, Iterable<Long>> tuple : poList) {
@@ -158,7 +154,6 @@ public class ProcessedOffsetManager {
           partitionOffsetMap.put(partition, offset);
         }
         persistProcessedOffsets(props, partitionOffsetMap);
-        return null;
       }
       public <T extends Comparable<T>> T getMaximum(Iterable<T> values) {
         T max = null;

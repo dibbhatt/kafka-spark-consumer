@@ -18,33 +18,31 @@
 
 package consumer.kafka.client;
 
+import consumer.kafka.MessageAndMetadata;
+import consumer.kafka.ProcessedOffsetManager;
+import consumer.kafka.ReceiverLauncher;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Properties;
-
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.VoidFunction;
 import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.Durations;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaPairDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
 
-import consumer.kafka.MessageAndMetadata;
-import consumer.kafka.ProcessedOffsetManager;
-import consumer.kafka.ReceiverLauncher;
-
 @SuppressWarnings("serial")
 public class SampleConsumer implements Serializable {
 
   public void start() throws InstantiationException, IllegalAccessException,
-      ClassNotFoundException {
+      ClassNotFoundException, InterruptedException {
     run();
   }
 
   @SuppressWarnings("deprecation")
-  private void run() {
+  private void run() throws InterruptedException {
 
     Properties props = new Properties();
     props.put("zookeeper.hosts", "x.x.x.x");
@@ -76,12 +74,11 @@ public class SampleConsumer implements Serializable {
         .getPartitionOffset(unionStreams);
 
     //Start Application Logic
-    unionStreams.foreachRDD(new Function<JavaRDD<MessageAndMetadata>, Void>() {
+    unionStreams.foreachRDD(new VoidFunction<JavaRDD<MessageAndMetadata>>() {
       @Override
-      public Void call(JavaRDD<MessageAndMetadata> rdd) throws Exception {
+      public void call(JavaRDD<MessageAndMetadata> rdd) throws Exception {
         List<MessageAndMetadata> rddList = rdd.collect();
         System.out.println(" Number of records in this batch " + rddList.size());
-        return null;
       }
     });
     //End Application Logic
