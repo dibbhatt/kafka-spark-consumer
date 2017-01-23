@@ -6,7 +6,7 @@ Original Storm Kafka Spout Code has been modified to work with Spark Streaming.
 
 This utility will help to pull messages from Kafka using Spark Streaming and have better handling of the Kafka Offsets and handle failures.
 
-This Consumer have implemented a Custom Reliable Receiver which uses low level Kafka Consumer API to fetch messages from Kafka and store every received block in Spark BlockManager. The logic will automatically detect number of partitions for a topic and spawn as many Kafka Receiver based on configured number of Receivers. Each Receiver can fetch messages from one or more Kafka Partitions.  Receiver commit the Kafka offsets of Received blocks once store to Spark BlockManager is successful.
+This Consumer have implemented a Custom Reliable Receiver which uses low level Kafka Consumer API to fetch messages from Kafka and store every received block in Spark BlockManager. The logic will automatically detect number of partitions for a topic and spawn as many Kafka Receiver based on configured number of Receivers. Each Receiver can fetch messages from one or more Kafka Partitions.  Receiver commit the Kafka offsets of next-to-receive blocks once store to Spark BlockManager is successful.
 
 e.g. if Kafka have 100 partitions of a Topic, and Spark Consumer if configured with 20 Receivers, each Receiver will handle 5 partition. 
 
@@ -16,8 +16,8 @@ Please see Java or Scala code example on how to use this Low Level Consumer
 
 ## Salient Feature of Kafka-Spark-Consumer
 
-- This Consumer uses **Zookeeper** for storing the **consumed** and **processed** offset for each Kafka partition, which will help to recover in case of failure
-- Spark streaming job using this Consumer does not require **WAL** for recovery from Driver or Executor failures. As this consumer has capability to store the processed offset after every Batch interval, in case of any failure, Consumer can start from last **Processed** offset.
+- This Consumer uses **Zookeeper** for storing the **next-to-process** offset for each Kafka partition, which will help to recover in case of failure
+- Spark streaming job using this Consumer does not require **WAL** for recovery from Driver or Executor failures. As this consumer has capability to store the next-to-process offset after every Batch interval, in case of any failure, Consumer can start from the correct offset next to the last **Processed** offset.
 - This Consumer has implemented **PID (Proportional , Integral , Derivative )**  based Rate Controller for controlling Back-Pressure by altering the **Spark Block Size**
 - This consumer have capability to use **Message Interceptor** which can be used to preprocess kafka messages before writing to Spark Block Manager
 
@@ -105,7 +105,7 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
 	* **zookeeper.broker.path**=/brokers
 * Kafka Topic to consume
 	* **kafka.topic**=topic-name
-* Consumer ZK quorum details. Used to store the consumed offset.
+* Consumer ZK quorum details. Used to store the next offset.
 	* **zookeeper.consumer.connection**=host1:2181,host2:2181
 * ZK Path for storing Kafka Consumer offset. Path will be automatically created
 	* **zookeeper.consumer.path**=/spark-kafka
@@ -248,7 +248,7 @@ Primary reason for WAL is , Receiver commit offset of consumed block to ZK after
 
 Hence there is a need for the WAL feature to recover already Received (but not processed) blocks from WAL written to persistence store like HDFS.
 
-But this Consumer has a different mechanism for Driver failure. Along with **consumed** offset of the Received blocks, this Consumer also maintains the offset of the **processed** blocks. Which mean, this consumer can commit offsets of the already processed blocks to ZK, and in case of Driver failures , it can start from last processed offset ( instead last received offset) for every Kafka partition. Thus Consumer can start from exact same offset since the last successful batch was processed and hence No data loss.
+But this Consumer has a different mechanism for Driver failure. Along with **consumed** offset of the Received blocks, this Consumer also maintains the offset of the **processed** blocks. Which mean, this consumer can commit offsets of the already processed blocks to ZK, and in case of Driver failures , it can start from the offset next to the last processed offset ( instead last received offset) for every Kafka partition. Thus Consumer can start from exact same offset since the last successful batch was processed and hence No data loss.
 
 ## How This Works
 
@@ -263,7 +263,7 @@ As every Receiver thread fetch from single Kafka partition, blocks written by an
 As one Receiver thread can write multiple blocks to BlockManager, we need to find highest offset for every RDD Partition which belongs to same Kafka partition , and repeat the same for all Kafka partition . Finally we can find the highest offset for a Kafka partition amongst all RDD partition.
 e.g. , if RDD Partition 4, 8 and 12 are generated by Receiver Thread X for Kafka Partition Y , and highest offset for 4 is 100, 8 is 400 and 12 is 800;  then highest offset for Kafka Partition  Y for this Batch is 800. 
 
-This Consumer perform very simple Map Reduce logic to get the highest offset for every Kafka partitions belongs to a given RDD for a Batch. This <Partition, Offset> tuple is written back to ZK as **processed** offset after the Batch completes.  
+This Consumer perform very simple Map Reduce logic to get the highest offset for every Kafka partitions belongs to a given RDD for a Batch. This <Partition, Offset> tuple is written back to ZK as **next-to-process** offset after the Batch completes.  
 
 This require following few lines to be added in Spark Driver Code to avail this feature. 
 
