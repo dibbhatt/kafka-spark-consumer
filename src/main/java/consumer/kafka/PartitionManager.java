@@ -207,9 +207,9 @@ public class PartitionManager implements Serializable {
           if (!_arrayBuffer.isEmpty() && !_receiver.isStopped()) {
             _receiver.store(_arrayBuffer.iterator());
             _arrayBuffer.clear();
+            commit();
+            _numFetchToBuffer = 1;
           }
-          commit();
-          _numFetchToBuffer = 1;
         }
       } catch (Exception ex) {
         _emittedToOffset = _lastComittedOffset;
@@ -283,7 +283,7 @@ public class PartitionManager implements Serializable {
     LOG.debug("New Emitted Offset {}", _emittedToOffset);
     LOG.debug("Enqueued Offset {}", _lastEnquedOffset);
 
-    if (_lastEnquedOffset > _lastComittedOffset) {
+    if (_lastEnquedOffset >= _lastComittedOffset) {
       LOG.debug("Committing offset for {}",_partition);
       Map<Object, Object> data = (Map<Object, Object>) ImmutableMap.builder()
         .put("consumer",ImmutableMap.of("id", _consumerId))
