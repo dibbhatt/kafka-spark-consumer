@@ -47,12 +47,12 @@ public class SampleConsumer implements Serializable {
   private void run() {
 
     Properties props = new Properties();
-    props.put("zookeeper.hosts", "x.x.x.x");
+    props.put("zookeeper.hosts", "localhost");
     props.put("zookeeper.port", "2181");
     props.put("zookeeper.broker.path", "/brokers");
     props.put("kafka.topic", "mytopic");
     props.put("kafka.consumer.id", "kafka-consumer");
-    props.put("zookeeper.consumer.connection", "x.x.x.x:2181");
+    props.put("zookeeper.consumer.connection", "localhost:2181");
     props.put("zookeeper.consumer.path", "/spark-kafka");
     // Optional Properties
     props.put("consumer.forcefromstart", "false");
