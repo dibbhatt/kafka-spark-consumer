@@ -115,7 +115,7 @@ public class KafkaServerTest {
     Partition part = new Partition(Broker.fromString(_broker
         .getBrokerConnectionString()), 0);
     FetchResponse fetchResponse = KafkaUtils.fetchMessages(_config,
-        _simpleConsumer, part, 0);
+        _simpleConsumer, part, 0, 1024);
 
     ByteBufferMessageSet msgs = fetchResponse.messageSet(_topic,
         part.partition);

@@ -18,10 +18,11 @@
 
 package consumer.kafka;
 
-public class IdentityMessageHandler implements KafkaMessageHandler {
+@SuppressWarnings("serial")
+public class IdentityMessageHandler extends KafkaMessageHandler<byte[]> {
 
-  @Override
-  public MessageAndMetadata process(MessageAndMetadata mmeta) throws Exception {
-    return mmeta;
-  }
+    @Override
+    protected byte[] process(byte[] payload) {
+        return payload;
+    }
 }

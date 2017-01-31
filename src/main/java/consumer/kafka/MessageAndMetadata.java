@@ -21,9 +21,9 @@ package consumer.kafka;
 import java.io.Serializable;
 
 @SuppressWarnings("serial")
-public class MessageAndMetadata implements Serializable {
+public class MessageAndMetadata<E> implements Serializable {
 
-  private byte[] payload;
+  private E payload;
   private byte[] key;
   private long offset;
   private Partition partition;
@@ -54,12 +54,12 @@ public class MessageAndMetadata implements Serializable {
     this.consumer = consumer;
   }
 
-  public byte[] getPayload() {
+  public E getPayload() {
     return payload;
   }
 
-  public void setPayload(byte[] payload) {
-    this.payload = payload;
+  public void setPayload(E msg) {
+    this.payload = msg;
   }
 
   public long getOffset() {

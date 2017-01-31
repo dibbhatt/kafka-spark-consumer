@@ -35,12 +35,17 @@ public class ScalaUtil {
     public static <T> ClassTag<T> getClassTag(Class<T> clazz) {
       return ClassTag$.MODULE$.apply(clazz);
     }
-    
+
     @SuppressWarnings("unchecked")
-  public static <K, V> ClassTag<Tuple2<K, V>> getTuple2ClassTag() {
+    public static <E> ClassTag<MessageAndMetadata<E>> getMessageAndMetadataClassTag() {
+      return (ClassTag<MessageAndMetadata<E>>)(Object) getClassTag(MessageAndMetadata.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <K, V> ClassTag<Tuple2<K, V>> getTuple2ClassTag() {
       return (ClassTag<Tuple2<K, V>>)(Object) getClassTag(Tuple2.class);
     }
-    
+
     public static <T> Seq<T> toScalaSeq(List<T> list) {
         return JavaConversions.asScalaBuffer(list);
     }

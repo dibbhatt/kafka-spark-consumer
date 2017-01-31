@@ -25,7 +25,6 @@
 package consumer.kafka;
 
 import java.io.Serializable;
-import java.lang.reflect.Constructor;
 import java.util.LinkedList;
 import java.util.Map;
 
@@ -44,308 +43,332 @@ import com.google.common.collect.ImmutableMap;
 
 @SuppressWarnings("serial")
 public class PartitionManager implements Serializable {
-  public static final Logger LOG = LoggerFactory
-      .getLogger(PartitionManager.class);
+    private static final Logger LOG = LoggerFactory
+            .getLogger(PartitionManager.class);
+    private Long _emittedToOffset;
+    private Long _lastComittedOffset;
+    private long _lastEnquedOffset;
+    private LinkedList<MessageAndMetadata> _arrayBuffer =
+            new LinkedList<MessageAndMetadata>();
+    private Partition _partition;
+    private KafkaConfig _kafkaconfig;
+    private String _consumerId;
+    private transient SimpleConsumer _consumer;
+    private DynamicPartitionConnections _connections;
+    private ZkState _state;
+    private String _topic;
+    private Map<String, String> _stateConf;
+    private Receiver<MessageAndMetadata> _receiver;
+    boolean _restart;
+    private KafkaMessageHandler _handler;
+    private int _numFetchBuffered = 1;
 
-  private Long _emittedToOffset;
-  private Long _lastComittedOffset;
-  private Long _lastEnquedOffset;
-  private LinkedList<MessageAndOffset> _waitingToEmit =
-      new LinkedList<MessageAndOffset>();
-  private LinkedList<MessageAndMetadata> _arrayBuffer =
-      new LinkedList<MessageAndMetadata>();
-  private Partition _partition;
-  private KafkaConfig _kafkaconfig;
-  private String _consumerId;
-  private transient SimpleConsumer _consumer;
-  private DynamicPartitionConnections _connections;
-  private ZkState _state;
-  private String _topic;
-  private Map<String, String> _stateConf;
-  private Receiver<MessageAndMetadata> _receiver;
-  private boolean _restart;
-  private KafkaMessageHandler _handler;
-  private int _numFetchToBuffer = 1;
+    public PartitionManager(
+            DynamicPartitionConnections connections,
+            ZkState state,
+            KafkaConfig kafkaconfig,
+            Partition partitionId,
+            Receiver<MessageAndMetadata> receiver,
+            boolean restart,
+            KafkaMessageHandler messageHandler) {
+        _partition = partitionId;
+        _connections = connections;
+        _kafkaconfig = kafkaconfig;
+        _stateConf = _kafkaconfig._stateConf;
+        _consumerId = (String) _stateConf.get(Config.KAFKA_CONSUMER_ID);
+        _consumer = connections.register(partitionId.host, partitionId.partition);
+        _state = state;
+        _topic = (String) _stateConf.get(Config.KAFKA_TOPIC);
+        _receiver = receiver;
+        _restart = restart;
+        _handler = messageHandler;
 
-  @SuppressWarnings("unchecked")
-  public PartitionManager(
-      DynamicPartitionConnections connections,
-        ZkState state,
-        KafkaConfig kafkaconfig,
-        Partition partiionId,
-        Receiver<MessageAndMetadata> receiver,
-        boolean restart) {
-    _partition = partiionId;
-    _connections = connections;
-    _kafkaconfig = kafkaconfig;
-    _stateConf = _kafkaconfig._stateConf;
-    _consumerId = (String) _stateConf.get(Config.KAFKA_CONSUMER_ID);
-    _consumer = connections.register(partiionId.host, partiionId.partition);
-    _state = state;
-    _topic = (String) _stateConf.get(Config.KAFKA_TOPIC);
-    _receiver = receiver;
-    _restart = restart;
-    Constructor<?> constructor;
-    try {
-      String messageHandlerClass = (String)_stateConf.get(Config.KAFKA_MESSAGE_HANDLER_CLASS);
-      constructor = Class.forName(messageHandlerClass).getConstructor();
-      _handler = (KafkaMessageHandler) constructor.newInstance();
-      LOG.info("Instantiated Message Handler {} for Partition: {}",messageHandlerClass, _partition.getId());
-    } catch (Exception e) {
-      LOG.error("Not able to instanticate Message Handler Class. Using Identity Handler");
-      _handler = new IdentityMessageHandler();
-    }
+        Long processOffset = null;
+        Long consumedOffset = null;
+        String processPath = zkPath("offsets");
+        String consumedPath = zkPath("consumed");
 
-    String consumerJsonId = null;
-    Long jsonOffset = null;
-    Long processOffset = null;
-    String path = committedPath();
-    String processPath = processedPath();
-    try {
-      Map<Object, Object> json = _state.readJSON(path);
-      LOG.debug("Read partition information from : {} --> {} ",path, json);
-      if (json != null) {
-        consumerJsonId = (String)((Map<Object, Object>) json.get("consumer")).get("id");
-        jsonOffset = (Long) json.get("offset");
-      }
-      Map<Object, Object> pJson = _state.readJSON(processPath);
-      if (pJson != null) {
-        String conId = (String) ((Map<Object, Object>) pJson.get("consumer")).get("id");
-        if (conId != null && conId.equalsIgnoreCase(consumerJsonId)) {
-          processOffset = (Long) pJson.get("offset");
-        }
-      }
-    } catch (Throwable e) {
-      LOG.warn("Error reading and/or parsing at ZkNode: " + path, e);
-    }
-    if (consumerJsonId == null || jsonOffset == null) { // failed to parse JSON?
-      _lastComittedOffset = KafkaUtils.getOffset(
-          _consumer,
-          _topic,
-          partiionId.partition,
-          kafkaconfig);
-      LOG.debug("No partition information found, using configuration to determine offset");
-    } else if (!_stateConf.get(Config.KAFKA_CONSUMER_ID).equals(consumerJsonId)
-        && kafkaconfig._forceFromStart) {
-      _lastComittedOffset = KafkaUtils.getOffset(
-          _consumer,
-          _topic,
-          partiionId.partition,
-          kafkaconfig._startOffsetTime);
-      LOG.info("Topology change detected and reset from start forced, using configuration to determine offset");
-    } else {
-      if (_restart && processOffset != null && processOffset < jsonOffset) {
-        _lastComittedOffset = processOffset + 1;
-      } else {
-        _lastComittedOffset = jsonOffset;
-      }
-      LOG.debug("Read last commit offset from zookeeper:{} ; old topology_id:{} - new consumer_id: {}" ,
-          _lastComittedOffset,
-          consumerJsonId,
-          _consumerId);
-    }
-    LOG.debug("Starting Consumer {} :{} from offset {}",_consumer.host(),partiionId.partition,_lastComittedOffset);
-    _emittedToOffset = _lastComittedOffset;
-    _lastEnquedOffset = _lastComittedOffset;
-  }
-
-  public void next() throws Exception {
-    if (_waitingToEmit.isEmpty()) {
-      fill();
-    } else {
-      _numFetchToBuffer = _numFetchToBuffer + 1;
-    }
-
-    while (true) {
-      MessageAndOffset msgAndOffset = _waitingToEmit.pollFirst();
-      if (msgAndOffset != null) {
-        Long key = msgAndOffset.offset();
-        Message msg = msgAndOffset.message();
         try {
-          _lastEnquedOffset = key;
-          if (_lastEnquedOffset >= _lastComittedOffset) {
-            if (msg.payload() != null) {
-              MessageAndMetadata mmeta = new MessageAndMetadata();
-              mmeta.setTopic(_topic);
-              mmeta.setConsumer(_consumerId);
-              mmeta.setOffset(_lastEnquedOffset);
-              mmeta.setPartition(_partition);
-              byte[] payload = new byte[msg.payload().remaining()];
-              msg.payload().get(payload);
-              mmeta.setPayload(payload);
-              mmeta = _handler.process(mmeta);
-              if(mmeta != null) {
-                if (msg.hasKey()) {
-                  byte[] msgKey = new byte[msg.key().remaining()];
-                  msg.key().get(msgKey);
-                  mmeta.setKey(msgKey);
-                }
-                _arrayBuffer.add(mmeta);
-                LOG.debug("Store for topic {} for partition {} is {} ",_topic,_partition.partition,_lastEnquedOffset);
-              }
+            byte[] pOffset = _state.readBytes(processPath);
+            LOG.info("Read processed information from: {}", processPath);
+            if (pOffset != null) {
+                processOffset = Long.valueOf(new String(pOffset));
+                LOG.info("Processed offset for Partition : {} is {}",_partition.partition, processOffset);
             }
-          }
-        } catch (Exception e) {
-          LOG.error("Error Handling MessageAndMetadata",e);
+            byte[] conffset = _state.readBytes(consumedPath);
+            LOG.info("Read consumed information from: {}", consumedPath);
+            if (conffset != null) {
+                consumedOffset = Long.valueOf(new String(conffset));
+                LOG.info("Consumed offset for Partition : {} is {}",_partition.partition, consumedOffset);
+            }
+        } catch (Throwable e) {
+            LOG.warn("Error reading and/or parsing at ZkNode", e);
+            throw e;
         }
-      } else {
-        break;
+        // failed to parse JSON?
+        if (consumedOffset == null || processOffset == null) {
+            _lastComittedOffset =
+                    KafkaUtils.getOffset(
+                            _consumer, _topic, _partition.partition, kafkaconfig);
+            LOG.info("No partition information found, using configuration to determine offset");
+        } else {
+          if (_restart) {
+            _lastComittedOffset = processOffset + 1;
+        } else {
+            _lastComittedOffset = consumedOffset;
+        }
+    }
+
+        LOG.info("Starting Receiver  {} : {} from offset {}", _consumer.host(), _partition.partition, _lastComittedOffset);
+        _emittedToOffset = _lastComittedOffset;
+        _lastEnquedOffset = _lastComittedOffset;
+        setZkCoordinator();
+    }
+
+    //Used for Consumer offset Lag
+    private void setZkCoordinator() {
+      try{
+        String cordinate = String.format("Receiver-%s", _receiver.streamId());
+        _state.writeBytes(zkPath("owners"), (cordinate + "-0").getBytes());
+        Map<Object, Object> data =
+            (Map<Object, Object>) ImmutableMap
+              .builder()
+              .put("version", 1)
+              .put("subscription", ImmutableMap.of(_topic, 1))
+              .put("pattern", "static")
+              .put("timestamp", Long.toString(System.currentTimeMillis()))
+              .build();
+        _state.writeJSON(zkIdsPath("ids") + cordinate , data);
+      } catch(Exception ne) {
+        LOG.error("Node already exists" , ne);
       }
     }
-    triggerBlockManagerWrite();
-  }
 
-  private void triggerBlockManagerWrite() {
-    if(_numFetchToBuffer < _kafkaconfig._numFetchToBuffer) {
-      return;
-    }
-    LOG.debug("Trigger Block Manager Write for Partition {}", _partition.partition);
-    if ((_lastEnquedOffset >= _lastComittedOffset)
-      && (_waitingToEmit.isEmpty())) {
-      try {
-        synchronized (_receiver) {
-          if (!_arrayBuffer.isEmpty() && !_receiver.isStopped()) {
-            _receiver.store(_arrayBuffer.iterator());
-            _arrayBuffer.clear();
-            commit();
-            _numFetchToBuffer = 1;
-          }
+    //Called every Fill Frequency
+    public void next() throws Exception {
+      fill();
+      //If consumer.num_fetch_to_buffer is default (1) , let commit consumed offset after every fill
+      //Otherwise consumed offset will be written after buffer is filled during triggerBlockManagerWrite
+      if ((_kafkaconfig._numFetchToBuffer == 1) && (_lastEnquedOffset >= _lastComittedOffset)) {
+        try {
+          _lastComittedOffset = _emittedToOffset;
+          _state.writeBytes(zkPath("consumed"), Long.toString(_lastComittedOffset).getBytes());
+          LOG.info("Consumed offset {} for Partition {} written to ZK", _lastComittedOffset, _partition.partition);
+        } catch (Exception ex) {
+          _receiver.reportError("Retry ZK Commit for Partition " + _partition, ex);
         }
-      } catch (Exception ex) {
-        _emittedToOffset = _lastComittedOffset;
-        _arrayBuffer.clear();
-        if (ex instanceof InterruptedException) {
-          throw ex;
-        } else {
+      }
+    }
+
+    private long getKafkaOffset() {
+      long kafkaOffset = KafkaUtils.getOffset(_consumer, _topic, _partition.partition, -1);
+      if (kafkaOffset == KafkaUtils.NO_OFFSET) {
+          LOG.warn("kafka latest offset not found for partition {}", _partition.partition);
+      }
+      return kafkaOffset;
+    }
+
+    private void reportOffsetLag() {
+      try {
+          long offsetLag = calculateOffsetLag();
+          LOG.info("Offset Lag for Parittion {} is {} " , _partition.partition, offsetLag);
+      } catch (Exception e) {
+          LOG.error("failed to report offset lag to graphite", e);
+      }
+    }
+
+    private long calculateOffsetLag() {
+      long offsetLag = 0;
+      long kafkaOffset = getKafkaOffset();
+      if (kafkaOffset != KafkaUtils.NO_OFFSET) {
+          offsetLag = kafkaOffset - _lastComittedOffset;
+      }
+      return offsetLag;
+    }
+
+
+    //This is called when consumer.num_fetch_to_buffer is set and when buffer is filled and 
+    //written to Spark Block Manager during fill
+    private void triggerBlockManagerWrite() {
+      if ((_lastEnquedOffset >= _lastComittedOffset)) {
+        try {
+          synchronized (_receiver) {
+            if (!_arrayBuffer.isEmpty() && !_receiver.isStopped()) {
+              _receiver.store(_arrayBuffer.iterator());
+              _arrayBuffer.clear();
+            }
+            _numFetchBuffered = 1;
+            _lastComittedOffset = _emittedToOffset;
+            //Write consumed offset to ZK
+            _state.writeBytes(zkPath("consumed"), Long.toString(_lastComittedOffset).getBytes());
+            LOG.info("Consumed offset {} for Partition {} written to ZK", _lastComittedOffset, _partition.partition);
+          }
+        } catch (Exception ex) {
+          _arrayBuffer.clear();
           _receiver.reportError("Retry Store for Partition " + _partition, ex);
         }
       }
     }
-  }
 
-  private void fill() {
-    try {
+    //Read from Kafka and write to Spark BlockManager
+    private void fill() {
+      String topic = _kafkaconfig._stateConf.get(Config.KAFKA_TOPIC);
+      ByteBufferMessageSet msgs;
+      //Get the present fetchSize from ZK set by PID Controller
+      int fetchSize = getFetchSize();
+      //Fetch messages from Kafka
+      msgs = fetchMessages(fetchSize, topic);
+      for (MessageAndOffset msgAndOffset : msgs) {
+        if (msgAndOffset.message() != null) {
+          long key = msgAndOffset.offset();
+          Message msg = msgAndOffset.message();
+          _emittedToOffset = msgAndOffset.nextOffset();
+          _lastEnquedOffset = key;
+          //Process only when fetched messages are having higher offset than last committed offset
+          if (_lastEnquedOffset >= _lastComittedOffset) {
+            if (msg.payload() != null) {
+              byte[] payload = new byte[msg.payload().remaining()];
+              msg.payload().get(payload);
+              MessageAndMetadata<?> mm = null;
+              try {
+                //Perform Message Handling if configured.
+                mm = _handler.handle(_lastEnquedOffset, _partition, _topic, _consumerId,  payload);
+                if (msg.hasKey()) {
+                  byte[] msgKey = new byte[msg.key().remaining()];
+                  msg.key().get(msgKey);
+                  mm.setKey(msgKey);
+                }
+              } catch (Exception e) {
+                LOG.error("Process Failed for offset {} partition {} topic {}", key, _partition, _topic, e);
+              }
+              if (_kafkaconfig._numFetchToBuffer > 1) {
+                // Add to buffer
+                if(mm != null ) {
+                  _arrayBuffer.add(mm);
+                  _numFetchBuffered = _numFetchBuffered + 1;
+                }
+                //Trigger write when buffer reach the limit
+                LOG.debug("number of fetch buffered for partition {} is {}", _partition.partition, _numFetchBuffered);
+                if (_numFetchBuffered >  _kafkaconfig._numFetchToBuffer) {
+                  triggerBlockManagerWrite();
+                  LOG.info("Trigger BM write till offset {} for Partition {}", _lastEnquedOffset, _partition.partition);
+                }
+              } else {
+                //nothing to buffer. Just add to Spark Block Manager
+                try {
+                  synchronized (_receiver) {
+                    if(mm != null) {
+                      _receiver.store(mm);
+                      LOG.debug("PartitionManager sucessfully written offset {} for partition {} to BM", _lastEnquedOffset, _partition.partition);
+                    }
+                  }
+                } catch (Exception ex) {
+                    _receiver.reportError("Retry Store for Partition " + _partition, ex);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    //Invoke Kafka API to fetch messages
+    private ByteBufferMessageSet fetchMessages(int fetchSize, String topic) {
       FetchResponse fetchResponse = KafkaUtils.fetchMessages(
-          _kafkaconfig,
-          _consumer,
-          _partition,
-          _emittedToOffset);
-      String topic = (String)_stateConf.get(Config.KAFKA_TOPIC);
-
+          _kafkaconfig, _consumer, _partition, _emittedToOffset, fetchSize);
       if (fetchResponse.hasError()) {
-        KafkaError error = KafkaError.getError(fetchResponse.errorCode(topic,_partition.partition));
-        if (error.equals(KafkaError.OFFSET_OUT_OF_RANGE)
-            && _kafkaconfig._useStartOffsetTimeIfOffsetOutOfRange) {
-          long startOffset = KafkaUtils.getOffset(
-              _consumer,
-              topic,
-              _partition.partition,
-              _kafkaconfig._startOffsetTime);
-          LOG.warn("Got fetch request with offset out of range: {} for Topic {} ."
-                    + "retrying with default start offset time from configuration."
-                    + "configured latest offset time: {} offset: {}",
-                    _emittedToOffset,topic,_kafkaconfig._startOffsetTime,startOffset);
-          _emittedToOffset = startOffset;
-          LOG.warn("Retyring to fetch again from offset for topic {} from offset {}" ,topic,_emittedToOffset);
-          fetchResponse = KafkaUtils.fetchMessages(
-              _kafkaconfig,
-              _consumer,
-              _partition,
-              _emittedToOffset);
-        } else {
-          String message = "Error fetching data from "
-              + "["+ _partition.partition+ "] for topic "
-              + "["+ topic + "]: ["+ error+ "]";
-          LOG.error(message);
-          throw new FailedFetchException(message);
-        }
-      }
-      ByteBufferMessageSet msgs = fetchResponse.messageSet(topic, _partition.partition);
+          KafkaError error = KafkaError.getError(fetchResponse.errorCode(
+              topic, _partition.partition));
+          if (error.equals(KafkaError.OFFSET_OUT_OF_RANGE)) {
+             long earliestTime = kafka.api.OffsetRequest.EarliestTime();
+             long latestTime = kafka.api.OffsetRequest.LatestTime();
+             long earliestOffset = KafkaUtils.getOffset(_consumer, topic, _partition.partition, earliestTime);
+             long latestOffset = KafkaUtils.getOffset(_consumer, topic, _partition.partition, latestTime);
+             LOG.warn("Got fetch request with offset out of range: {} for Topic {}  partition {}" , _emittedToOffset, topic, _partition.partition);
 
-      for (MessageAndOffset msg : msgs) {
-        if (msg.message() != null) {
-          _waitingToEmit.add(msg);
-          _emittedToOffset = msg.nextOffset();
-        }
+             //If OFFSET_OUT_OF_RANGE , check if present _emittedToOffset is greater than Partition's latest offset
+             //This can happen if new Leader is behind the previous leader when elected during a Kafka broker failure.
+             if(_emittedToOffset >= latestOffset) {
+               _emittedToOffset = latestOffset;
+               LOG.warn("Offset reset to LatestTime {} for Topic {}  partition {}" , _emittedToOffset, topic, _partition.partition);
+             } else if (_emittedToOffset <= earliestOffset) {
+               //This can happen if messages are deleted from Kafka due to Kafka's log retention period and 
+               //probably there is huge lag in Consumer.  Or consumer is stopped for long time.
+               _emittedToOffset = earliestOffset;
+               _lastComittedOffset = earliestOffset;
+               LOG.warn("Offset reset to EarliestTime {} for Topic {}  partition {}" , _emittedToOffset, topic, _partition.partition);
+             }
+            fetchResponse = KafkaUtils.fetchMessages(
+                _kafkaconfig, _consumer, _partition, _emittedToOffset, fetchSize);
+          } else {
+              String message = "Error fetching data from ["
+                              + _partition.partition + "] for topic [" + topic + "]: [" + error + "]";
+              LOG.error(message);
+              throw new FailedFetchException(message);
+          }
       }
-
-      if (_waitingToEmit.size() >= 1)
-        LOG.debug("Total {} messages from Kafka: {} : {} there in internal buffers",
-            _waitingToEmit.size(),_consumer.host(),_partition.partition);
-    } catch (FailedFetchException fe) {
-      LOG.error("Exception during fill " + fe.getMessage());
-      throw fe;
+      return fetchResponse.messageSet(topic, _partition.partition);
     }
-  }
 
-  public void commit() {
-    LOG.debug("LastComitted Offset {}", _lastComittedOffset);
-    LOG.debug("New Emitted Offset {}", _emittedToOffset);
-    LOG.debug("Enqueued Offset {}", _lastEnquedOffset);
-
-    if (_lastEnquedOffset >= _lastComittedOffset) {
-      LOG.debug("Committing offset for {}",_partition);
-      Map<Object, Object> data = (Map<Object, Object>) ImmutableMap.builder()
-        .put("consumer",ImmutableMap.of("id", _consumerId))
-        .put("offset",_emittedToOffset)
-        .put("partition", _partition.partition)
-        .put("broker",ImmutableMap.of("host",_partition.host.host,"port",_partition.host.port))
-        .put("topic", _topic).build();
+    //Get fetchSize from ZK
+    private int getFetchSize() {
+      int newFetchSize = 0;
       try {
-        _state.writeJSON(committedPath(), data);
-        LOG.debug("Wrote committed offset to ZK: " + _emittedToOffset);
-        _waitingToEmit.clear();
-        _lastComittedOffset = _emittedToOffset;
-      } catch (Exception zkEx) {
-        LOG.error("Error during commit. Let wait for refresh ", zkEx);
+        byte[] rate = _state.readBytes(ratePath());
+        if (rate != null) {
+            newFetchSize = Integer.valueOf(new String(rate));
+            LOG.debug("Current Fetch Rate for topic {} is {}",
+                _kafkaconfig._stateConf.get(Config.KAFKA_TOPIC), newFetchSize);
+         }  else {
+            newFetchSize = _kafkaconfig._fetchSizeBytes;
+        }
+      } catch (Throwable e) {
+          newFetchSize = _kafkaconfig._fetchSizeBytes;
       }
-
-      LOG.debug("Committed offset {} for {} for consumer: {}",
-          _lastComittedOffset,_partition,_consumerId);
-    } else {
-      LOG.debug("Last Enqueued offset {} not incremented since previous Comitted Offset {}"
-          + " for partition  {} for Consumer {}.",
-          _lastEnquedOffset,_lastComittedOffset,_partition, _consumerId);
-    }
+      return newFetchSize;
   }
 
-  private String committedPath() {
-    return _stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH) 
-        + "/" + _stateConf.get(Config.KAFKA_CONSUMER_ID) 
-        + "/" + _stateConf.get(Config.KAFKA_TOPIC)
-        + "/"+ _partition.getId();
-  }
-
-  public String processedPath() {
-    return _stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH)
-        + "/"+ _stateConf.get(Config.KAFKA_CONSUMER_ID)
-        + "/" + _stateConf.get(Config.KAFKA_TOPIC)
-        + "/processed/" + _partition.getId();
-  }
-
-  public long queryPartitionOffsetLatestTime() {
-    return KafkaUtils.getOffset(_consumer,_topic,_partition.partition,OffsetRequest.LatestTime());
-  }
-
-  public long lastCommittedOffset() {
-    return _lastComittedOffset;
-  }
-
-  public Partition getPartition() {
-    return _partition;
-  }
-
-  public void close() {
-    try {
-      LOG.info("Flush BlockManager Write for Partition {}", _partition.partition);
-      _numFetchToBuffer = _kafkaconfig._numFetchToBuffer;
-      triggerBlockManagerWrite();
-      _connections.unregister(_partition.host, _partition.partition);
-      _connections.clear();
-      LOG.info("Closed connection for partition : {}", _partition);
-    } catch (Exception ex) {
-      LOG.error("Error closing connection", ex);
+    public String ratePath() {
+      return _kafkaconfig._stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH)
+              + "/" + _kafkaconfig._stateConf.get(Config.KAFKA_CONSUMER_ID) + "/newrate";
     }
 
-  }
+    private String zkPath(String type) {
+      return _stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH)
+              + "/" + _stateConf.get(Config.KAFKA_CONSUMER_ID) + "/" + type+ "/"
+              + _stateConf.get(Config.KAFKA_TOPIC) + "/" + _partition.getId();
+    }
+
+    private String zkIdsPath(String type) {
+      return _stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH)
+              + "/" + _stateConf.get(Config.KAFKA_CONSUMER_ID) + "/" + type+ "/"
+              + _stateConf.get(Config.KAFKA_TOPIC) + "/";
+    }
+
+    public long queryPartitionOffsetLatestTime() {
+      return KafkaUtils.getOffset(
+              _consumer, _topic, _partition.partition, OffsetRequest.LatestTime());
+    }
+
+    public long lastCommittedOffset() {
+      return _lastComittedOffset;
+    }
+
+    public Partition getPartition() {
+      return _partition;
+    }
+
+    public void close() {
+      try {
+        LOG.info("Flush BlockManager Write for Partition {}", _partition.partition);
+        _numFetchBuffered = _kafkaconfig._numFetchToBuffer;
+        triggerBlockManagerWrite();
+        _connections.unregister(_partition.host, _partition.partition);
+        _connections.clear();
+        LOG.info("Closed connection for {}", _partition);
+      } catch (Exception ex) {
+        ex.printStackTrace();
+        LOG.error("Error closing connection" + " for " + _partition);
+      }
+    }
 }

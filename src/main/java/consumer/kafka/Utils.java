@@ -46,4 +46,13 @@ public class Utils {
     buffer.get(ret, 0, ret.length);
     return ret;
   }
+
+  public static void setFetchRate(KafkaConfig config, Integer rate) {
+    String path = config._stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH)
+        + "/" + config._stateConf.get(Config.KAFKA_CONSUMER_ID) + "/newrate";
+    ZkState state = new ZkState((String) config._stateConf
+            .get(Config.ZOOKEEPER_CONSUMER_CONNECTION));
+    state.writeBytes(path, rate.toString().getBytes());
+    state.close();
+  }
 }

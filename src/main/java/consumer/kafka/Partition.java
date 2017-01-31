@@ -63,7 +63,7 @@ public class Partition implements Serializable {
   }
 
   public String getId() {
-    return "partition_" + partition;
+    return Integer.toString(partition);
   }
 
 }

@@ -13,7 +13,7 @@ object LowLevelKafkaConsumer {
 
     //Create SparkContext
     val conf = new SparkConf()
-      .setMaster("spark://x.x.x.x:7077")
+      .setMaster("spark://localhost:7077")
       .setAppName("LowLevelKafkaConsumer")
       .set("spark.executor.memory", "1g")
       .set("spark.rdd.compress","true")
@@ -23,10 +23,9 @@ object LowLevelKafkaConsumer {
     val sc = new SparkContext(conf)
     val ssc = new StreamingContext(sc, Seconds(10))
 
-    val topic = "xxxx"
-    val zkhosts = "x.x.x.x"
+    val topic = "mytopic"
+    val zkhosts = "localhost"
     val zkports = "2181"
-    val brokerPath = "/brokers"
 
     //Specify number of Receivers you need. 
     val numberOfReceivers = 1
@@ -34,16 +33,14 @@ object LowLevelKafkaConsumer {
     val kafkaProperties: Map[String, String] = 
 	Map("zookeeper.hosts" -> zkhosts,
         "zookeeper.port" -> zkports,
-        "zookeeper.broker.path" -> brokerPath ,
         "kafka.topic" -> topic,
-        "zookeeper.consumer.connection" -> "x.x.x.x:2181",
-        "zookeeper.consumer.path" -> "/spark-kafka",
+        "zookeeper.consumer.connection" -> "localhost:2181",
         "kafka.consumer.id" -> "kafka-consumer",
         //optional properties
         "consumer.forcefromstart" -> "true",
         "consumer.backpressure.enabled" -> "true",
         "consumer.fetchsizebytes" -> "1048576",
-        "consumer.fillfreqms" -> "250",
+        "consumer.fillfreqms" -> "1000",
         "consumer.num_fetch_to_buffer" -> "1")
 
     val props = new java.util.Properties()
@@ -51,7 +48,7 @@ object LowLevelKafkaConsumer {
 
     val tmp_stream = ReceiverLauncher.launch(ssc, props, numberOfReceivers,StorageLevel.MEMORY_ONLY)
     //Get the Max offset from each RDD Partitions. Each RDD Partition belongs to One Kafka Partition
-    val partitonOffset_stream = ProcessedOffsetManager.getPartitionOffset(tmp_stream)
+    val partitonOffset_stream = ProcessedOffsetManager.getPartitionOffset(tmp_stream, props)
 
     //Start Application Logic
     tmp_stream.foreachRDD(rdd => {

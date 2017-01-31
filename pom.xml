@@ -17,14 +17,14 @@
 
   <groupId>kafka.spark.consumer</groupId>
   <artifactId>kafka-spark-consumer</artifactId>
-  <version>1.0.9</version>
+  <version>1.0.10</version>
   <packaging>jar</packaging>
 
   <name>kafka-spark-consumer</name>
 
   <properties>
-    <spark.version>1.6.0</spark.version>
-    <kafka.version>0.10.0.0</kafka.version>
+    <spark.version>2.1.0</spark.version>
+    <kafka.version>0.10.1.1</kafka.version>
   </properties>
 
   <dependencies>
@@ -41,7 +41,7 @@
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-core_2.10</artifactId>
+      <artifactId>spark-core_2.11</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
       <exclusions>
@@ -53,7 +53,7 @@
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-streaming_2.10</artifactId>
+      <artifactId>spark-streaming_2.11</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
       <exclusions>
@@ -124,7 +124,7 @@
     </dependency>
     <dependency>
       <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka_2.10</artifactId>
+      <artifactId>kafka_2.11</artifactId>
       <version>${kafka.version}</version>
       <exclusions>
         <exclusion>
@@ -146,7 +146,8 @@
     <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
-      <version>2.10.0</version>
+      <version>2.11.0</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 
@@ -175,7 +176,7 @@
           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
-              <mainClass>consumer.kafka.client.Consumer</mainClass>
+              <mainClass>consumer.kafka.client.SampleConsumer</mainClass>
             </manifest>
           </archive>
         </configuration>

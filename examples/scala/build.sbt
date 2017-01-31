@@ -4,11 +4,11 @@ name := "LowlevelKafkaConsumer"
 
 version := "1.0"
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.11.0"
 
-libraryDependencies += "org.apache.spark" % "spark-streaming_2.10" % "1.6.0"
-libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.9"
-libraryDependencies += "org.apache.kafka" % "kafka_2.10" % "0.10.0.0"
+libraryDependencies += "org.apache.spark" % "spark-streaming_2.11" % "2.1.0"
+libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.10"
+libraryDependencies += "org.apache.kafka" % "kafka_2.11" % "0.10.1.1"
 
 assemblyMergeStrategy in assembly := {
  case PathList("META-INF", xs @ _*) => MergeStrategy.discard

@@ -80,7 +80,7 @@ public class Config extends HashMap<String, Object> implements Serializable {
 
   public static final String KAFKA_RECEIVER_NUMBER = 
       "kafka.receiver.number";
-  public static final String KAFKA_MESSAGE_HANDLER_CLASS =
-      "kafka.message.handler.class";
+  public static final String SPARK_RESOURCE_MANAGER_CLASS =
+      "spark.resource.manager.class";
 
 }
