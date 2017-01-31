@@ -85,8 +85,8 @@ public class PartitionManager implements Serializable {
 
         Long processOffset = null;
         Long consumedOffset = null;
-        String processPath = zkPath("offsets");
-        String consumedPath = zkPath("consumed");
+        String processPath = zkPath("processed");
+        String consumedPath = zkPath("offsets");
 
         try {
             byte[] pOffset = _state.readBytes(processPath);
@@ -106,13 +106,13 @@ public class PartitionManager implements Serializable {
             throw e;
         }
         // failed to parse JSON?
-        if (consumedOffset == null || processOffset == null) {
+        if (consumedOffset == null) {
             _lastComittedOffset =
                     KafkaUtils.getOffset(
                             _consumer, _topic, _partition.partition, kafkaconfig);
             LOG.info("No partition information found, using configuration to determine offset");
         } else {
-          if (_restart) {
+          if (_restart && processOffset != null) {
             _lastComittedOffset = processOffset + 1;
         } else {
             _lastComittedOffset = consumedOffset;
@@ -152,7 +152,7 @@ public class PartitionManager implements Serializable {
       if ((_kafkaconfig._numFetchToBuffer == 1) && (_lastEnquedOffset >= _lastComittedOffset)) {
         try {
           _lastComittedOffset = _emittedToOffset;
-          _state.writeBytes(zkPath("consumed"), Long.toString(_lastComittedOffset).getBytes());
+          _state.writeBytes(zkPath("offsets"), Long.toString(_lastComittedOffset).getBytes());
           LOG.info("Consumed offset {} for Partition {} written to ZK", _lastComittedOffset, _partition.partition);
         } catch (Exception ex) {
           _receiver.reportError("Retry ZK Commit for Partition " + _partition, ex);
@@ -200,7 +200,7 @@ public class PartitionManager implements Serializable {
             _numFetchBuffered = 1;
             _lastComittedOffset = _emittedToOffset;
             //Write consumed offset to ZK
-            _state.writeBytes(zkPath("consumed"), Long.toString(_lastComittedOffset).getBytes());
+            _state.writeBytes(zkPath("offsets"), Long.toString(_lastComittedOffset).getBytes());
             LOG.info("Consumed offset {} for Partition {} written to ZK", _lastComittedOffset, _partition.partition);
           }
         } catch (Exception ex) {
