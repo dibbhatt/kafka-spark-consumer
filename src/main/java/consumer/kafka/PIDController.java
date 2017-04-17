@@ -54,7 +54,7 @@ public class PIDController {
     batchDurationMs = (long) ((long)batchDurationMs * config._safeBatchPercent);
 
     //Every Fill create one Spark Block
-    double blocksPerSecond = 1000 / fillFreqMs;
+    double blocksPerSecond = 1000 / (double)fillFreqMs;
 
     //Incoming fetchSizeBytes set to 1KB due to Queue size increase.
     //Let not consider that to calculate  next rate

@@ -78,58 +78,57 @@ public class KafkaConsumer<E extends Serializable> implements Runnable, Serializ
 
     @Override
     public void close() {
-        if (_state != null) {
-            _state.close();
-        }
-        if (_connections != null) {
-            _connections.clear();
-        }
+      if (_state != null) {
+          _state.close();
+      }
+      if (_connections != null) {
+          _connections.clear();
+      }
     }
 
     public void createStream() throws Exception {
-        try {
-            List<PartitionManager> managers = _coordinator.getMyManagedPartitions();
-            if (managers == null || managers.size() == 0) {
-                LOG.warn("Some issue getting Partition details.. Refreshing Corodinator..");
-                _coordinator.refresh();
-            } else {
-                managers.get(0).next();
-            }
-        } catch (FailedFetchException fe) {
-            fe.printStackTrace();
-            LOG.warn("Fetch failed. Refresing Coordinator..", fe);
+      try {
+        List<PartitionManager> managers = _coordinator.getMyManagedPartitions();
+        if (managers == null || managers.size() == 0) {
+            LOG.warn("Some issue getting Partition details.. Refreshing Corodinator..");
             _coordinator.refresh();
-        } catch (Exception ex) {
-            LOG.error("Partition "
-                    + _currPartitionIndex + " encountered error during createStream : "
-                    + ex.getMessage());
-            ex.printStackTrace();
-            throw ex;
+        } else {
+            managers.get(0).next();
         }
-
+      } catch (FailedFetchException fe) {
+          fe.printStackTrace();
+          LOG.warn("Fetch failed. Refresing Coordinator..", fe);
+          _coordinator.refresh();
+      } catch (Exception ex) {
+          LOG.error("Partition "
+                  + _currPartitionIndex + " encountered error during createStream : "
+                  + ex.getMessage());
+          ex.printStackTrace();
+          throw ex;
+      }
     }
 
     @Override
     public void run() {
-        try {
-            while (!_receiver.isStopped()) {
-                long timeSinceLastPull = System.currentTimeMillis() - _lastConsumeTime;
-                if (timeSinceLastPull >= _kafkaconfig._fillFreqMs) {
-                    _lastConsumeTime = System.currentTimeMillis();
-                    this.createStream();
-                } else {
-                    long waitTime = _kafkaconfig._fillFreqMs - timeSinceLastPull;
-                    if (waitTime > 0)
-                        Thread.sleep(waitTime);
-                }
-            }
-        } catch (Exception ex) {
-            try {
-                this.close();
-                throw ex;
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+      try {
+        while (!_receiver.isStopped()) {
+          long timeSinceLastPull = System.currentTimeMillis() - _lastConsumeTime;
+          if (timeSinceLastPull >= _kafkaconfig._fillFreqMs) {
+            _lastConsumeTime = System.currentTimeMillis();
+            this.createStream();
+          } else {
+            long waitTime = _kafkaconfig._fillFreqMs - timeSinceLastPull;
+            if (waitTime > 0)
+               Thread.sleep(waitTime);
+          }
         }
+      } catch (Exception ex) {
+          try {
+              this.close();
+              throw ex;
+          } catch (Exception e) {
+              e.printStackTrace();
+          }
+      }
     }
 }

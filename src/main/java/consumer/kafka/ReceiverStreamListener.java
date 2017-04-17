@@ -115,6 +115,7 @@ public class ReceiverStreamListener implements StreamingListener {
     public void onBatchCompleted(
             StreamingListenerBatchCompleted batchCompleted) {
         batchCompletedCount++;
+        int queueSize = batchSubmittedCount - batchCompletedCount;
         boolean backPressureEnabled = (boolean) config._backpressureEnabled;
         if (backPressureEnabled) {
           long processingDelay =
@@ -139,7 +140,11 @@ public class ReceiverStreamListener implements StreamingListener {
             if (newRate > MAX_RATE) {
               newRate = MAX_RATE;
             }
-            Utils.setFetchRate(config, newRate);
+            if (queueSize > THROTTLE_QUEUE) {
+              LOG.warn("Controller rate not applied as waiting queue is greater than throttle queue");
+            } else {
+              Utils.setFetchRate(config, newRate);
+            }
           }
         }
     }

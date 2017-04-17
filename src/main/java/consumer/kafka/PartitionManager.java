@@ -119,10 +119,10 @@ public class PartitionManager implements Serializable {
         }
     }
 
-        LOG.info("Starting Receiver  {} : {} from offset {}", _consumer.host(), _partition.partition, _lastComittedOffset);
-        _emittedToOffset = _lastComittedOffset;
-        _lastEnquedOffset = _lastComittedOffset;
-        setZkCoordinator();
+      LOG.info("Starting Receiver  {} : {} from offset {}", _consumer.host(), _partition.partition, _lastComittedOffset);
+      _emittedToOffset = _lastComittedOffset;
+      _lastEnquedOffset = _lastComittedOffset;
+      setZkCoordinator();
     }
 
     //Used for Consumer offset Lag
@@ -153,8 +153,9 @@ public class PartitionManager implements Serializable {
         try {
           _lastComittedOffset = _emittedToOffset;
           _state.writeBytes(zkPath("offsets"), Long.toString(_lastComittedOffset).getBytes());
-          LOG.info("Consumed offset {} for Partition {} written to ZK", _lastComittedOffset, _partition.partition);
+          LOG.debug("Consumed offset {} for Partition {} written to ZK", _lastComittedOffset, _partition.partition);
         } catch (Exception ex) {
+          LOG.error("error during ZK Commit", ex);
           _receiver.reportError("Retry ZK Commit for Partition " + _partition, ex);
         }
       }
@@ -201,10 +202,11 @@ public class PartitionManager implements Serializable {
             _lastComittedOffset = _emittedToOffset;
             //Write consumed offset to ZK
             _state.writeBytes(zkPath("offsets"), Long.toString(_lastComittedOffset).getBytes());
-            LOG.info("Consumed offset {} for Partition {} written to ZK", _lastComittedOffset, _partition.partition);
+            LOG.debug("Consumed offset {} for Partition {} written to ZK", _lastComittedOffset, _partition.partition);
           }
         } catch (Exception ex) {
           _arrayBuffer.clear();
+          LOG.error("error while triggerBlockManagerWrite" , ex);
           _receiver.reportError("Retry Store for Partition " + _partition, ex);
         }
       }
@@ -251,7 +253,7 @@ public class PartitionManager implements Serializable {
                 LOG.debug("number of fetch buffered for partition {} is {}", _partition.partition, _numFetchBuffered);
                 if (_numFetchBuffered >  _kafkaconfig._numFetchToBuffer) {
                   triggerBlockManagerWrite();
-                  LOG.info("Trigger BM write till offset {} for Partition {}", _lastEnquedOffset, _partition.partition);
+                  LOG.debug("Trigger BM write till offset {} for Partition {}", _lastEnquedOffset, _partition.partition);
                 }
               } else {
                 //nothing to buffer. Just add to Spark Block Manager
@@ -360,11 +362,12 @@ public class PartitionManager implements Serializable {
 
     public void close() {
       try {
-        LOG.info("Flush BlockManager Write for Partition {}", _partition.partition);
+        LOG.warn("Flush BlockManager Write for Partition {}", _partition.partition);
         _numFetchBuffered = _kafkaconfig._numFetchToBuffer;
         triggerBlockManagerWrite();
         _connections.unregister(_partition.host, _partition.partition);
         _connections.clear();
+        _state.close();
         LOG.info("Closed connection for {}", _partition);
       } catch (Exception ex) {
         ex.printStackTrace();

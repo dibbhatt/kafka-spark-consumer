@@ -59,19 +59,19 @@ public class KafkaRangeReceiver<E extends Serializable> extends Receiver<Message
             Set<Integer> partitionSet,
             StorageLevel storageLevel,
             KafkaMessageHandler<E> messageHandler) {
-        super(storageLevel);
-        this._props = props;
-        _partitionSet = partitionSet;
-        _messageHandler = messageHandler;
+      super(storageLevel);
+      this._props = props;
+      _partitionSet = partitionSet;
+      _messageHandler = messageHandler;
     }
 
     @Override
     public void onStart() {
-        try {
-            start();
-        } catch (CloneNotSupportedException e) {
-            LOG.error("Error while starting Receiver", e);
-        }
+      try {
+          start();
+      } catch (CloneNotSupportedException e) {
+          LOG.error("Error while starting Receiver", e);
+      }
     }
 
     public void start() throws CloneNotSupportedException {
@@ -82,47 +82,44 @@ public class KafkaRangeReceiver<E extends Serializable> extends Receiver<Message
         maxRestartAttempts = kafkaConfig._maxRestartAttempts;
         restartAttempts = restartAttempts + 1;
         for (Integer partitionId : _partitionSet) {
-
-            ZkState zkState = new ZkState(kafkaConfig);
-            _kConsumer = new KafkaConsumer(kafkaConfig, zkState, this, (KafkaMessageHandler) _messageHandler.clone());
-            _kConsumer.open(partitionId);
-
-            Thread.UncaughtExceptionHandler eh =
-                    new Thread.UncaughtExceptionHandler() {
-                        public void uncaughtException(Thread th, Throwable ex) {
-                            LOG.error("Receiver got Uncaught Exception " + ex.getMessage()
-                                    + " for Partition " + partitionId);
-                            if (ex instanceof InterruptedException) {
-                                LOG.error("Stopping Receiver for partition " + partitionId);
-                                th.interrupt();
-                                stop(" Stopping Receiver due to " + ex);
-                            } else {
-                                if (maxRestartAttempts < 0 || restartAttempts < maxRestartAttempts) {
-                                    LOG.error("Restarting Receiver in 5 Sec for Partition " +
-                                            partitionId + " . restart attempt " + restartAttempts);
-                                    restart("Restarting Receiver for Partition " + partitionId, ex, 5000);
-                                } else {
-                                    LOG.error("tried maximum configured restart attemps " +
-                                            maxRestartAttempts + " shutting down receiver");
-                                    stop(" Stopping Receiver for partition "
-                                            + partitionId + ". Max restart attempt exhausted");
-                                }
-                            }
-                        }
-                    };
-
-            _consumerThread = new Thread(_kConsumer);
-            _consumerThread.setUncaughtExceptionHandler(eh);
-            _threadList.add(_consumerThread);
-            _consumerThread.start();
+          ZkState zkState = new ZkState(kafkaConfig);
+          _kConsumer = new KafkaConsumer(kafkaConfig, zkState, this, (KafkaMessageHandler) _messageHandler.clone());
+          _kConsumer.open(partitionId);
+          Thread.UncaughtExceptionHandler eh =
+              new Thread.UncaughtExceptionHandler() {
+                  public void uncaughtException(Thread th, Throwable ex) {
+                      LOG.error("Receiver got Uncaught Exception " + ex.getMessage()
+                              + " for Partition " + partitionId);
+                      if (ex instanceof InterruptedException) {
+                          LOG.error("Stopping Receiver for partition " + partitionId);
+                          th.interrupt();
+                          stop(" Stopping Receiver due to " + ex);
+                      } else {
+                          if (maxRestartAttempts < 0 || restartAttempts < maxRestartAttempts) {
+                              LOG.error("Restarting Receiver in 5 Sec for Partition " +
+                                      partitionId + " . restart attempt " + restartAttempts);
+                              restart("Restarting Receiver for Partition " + partitionId, ex, 5000);
+                          } else {
+                              LOG.error("tried maximum configured restart attemps " +
+                                      maxRestartAttempts + " shutting down receiver");
+                              stop(" Stopping Receiver for partition "
+                                      + partitionId + ". Max restart attempt exhausted");
+                          }
+                      }
+                  }
+              };
+          _consumerThread = new Thread(_kConsumer);
+          _consumerThread.setUncaughtExceptionHandler(eh);
+          _threadList.add(_consumerThread);
+          _consumerThread.start();
         }
     }
 
     @Override
     public void onStop() {
-        for (Thread t : _threadList) {
-            if (t.isAlive())
-                t.interrupt();
-        }
+      for (Thread t : _threadList) {
+          if (t.isAlive())
+              t.interrupt();
+      }
     }
 }

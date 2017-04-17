@@ -134,6 +134,7 @@ public class ReceiverLauncher implements Serializable {
         jsc.addStreamingListener(listener);
         //Reset the fetch size
         Utils.setFetchRate(kafkaConfig, kafkaConfig._fetchSizeBytes);
+        zkState.close();
         return unionStreams;
     }
 
