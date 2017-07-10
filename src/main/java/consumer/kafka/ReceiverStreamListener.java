@@ -158,7 +158,7 @@ public class ReceiverStreamListener implements StreamingListener {
         if (rate != null) {
             newFetchSize = Integer.valueOf(new String(rate));
             LOG.info("Current Fetch Rate for topic {} is {}",
-                config._stateConf.get("kafka.input.topic"), newFetchSize);
+                config._stateConf.get("kafka.topic"), newFetchSize);
          } else {
             newFetchSize = config._fetchSizeBytes;
         }
