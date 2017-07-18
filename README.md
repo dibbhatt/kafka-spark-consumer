@@ -6,7 +6,7 @@ Original Storm Kafka Spout Code has been modified to work with Spark Streaming.
 
 This utility will help to pull messages from Kafka using Spark Streaming and have better handling of the Kafka Offsets and handle failures.
 
-This Consumer have implemented a Custom Reliable Receiver which uses low level Kafka Consumer API to fetch messages from Kafka and store every received block in Spark BlockManager. The logic will automatically detect number of partitions for a topic and spawn as many Kafka Receiver based on configured number of Receivers. Each Receiver can fetch messages from one or more Kafka Partitions.  Receiver commit the Kafka offsets of next-to-receive blocks once store to Spark BlockManager is successful.
+This Consumer have implemented a Custom Reliable Receiver which uses low level Kafka Consumer API to fetch messages from Kafka and store every received block in Spark BlockManager. The logic will automatically detect number of partitions for a topic and spawn as many Kafka Receiver based on configured number of Receivers. Each Receiver can fetch messages from one or more Kafka Partitions.  Receiver commit the Kafka offsets of fetched blocks once store to Spark BlockManager is successful.
 
 e.g. if Kafka have 100 partitions of a Topic, and Spark Consumer if configured with 20 Receivers, each Receiver will handle 5 partition. 
 
@@ -20,7 +20,7 @@ Please see Java or Scala code example on how to use this Low Level Consumer
 - Spark streaming job using this Consumer **does not require WAL** for recovery from Driver or Executor failures. As this consumer has capability to store the processed offset after every Batch interval, in case of any failure, Consumer can start from the correct offset from the last **Processed** offset.
 - This Consumer has implemented **PID (Proportional , Integral , Derivative )**  based Rate Controller for controlling Back-Pressure by altering the **Spark Block Size**
 - This consumer have capability to use **Message Interceptor** which can be used to preprocess kafka messages before writing to Spark Block Manager
-- One can use standard Consumer Lag Checker (like ConsumerOffsetChecker) tool to find Consumer Lag
+- One can use **Consumer Lag Checker** (like ConsumerOffsetChecker) tool to find Consumer Lag
 
 # What is Different from Spark Out of Box Kafka Consumers
 
@@ -49,7 +49,7 @@ And Use Below Dependency in your Maven
 		<dependency>
 				<groupId>kafka.spark.consumer</groupId>
 				<artifactId>kafka-spark-consumer</artifactId>
-				<version>1.0.10</version>
+				<version>1.0.11</version>
 		</dependency>
 
 # Accessing from Spark Packages
@@ -59,18 +59,18 @@ And Use Below Dependency in your Maven
 Include this package in your Spark Applications using:
 
 * spark-shell, pyspark, or spark-submit
-	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.10
+	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.11
 * sbt
 
 If you use the sbt-spark-package plugin, in your sbt build file, add:
 
-	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.10"
+	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.11"
 
 Otherwise,
 
 	resolvers += "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven"
 			  
-	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.10"
+	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.11"
 
 
 * Maven
@@ -82,7 +82,7 @@ In your pom.xml, add:
 	  <dependency>
 		<groupId>dibbhatt</groupId>
 		<artifactId>kafka-spark-consumer</artifactId>
-		<version>1.0.10</version>
+		<version>1.0.11</version>
 	  </dependency>
 	</dependencies>
 	<repositories>
@@ -186,7 +186,7 @@ The src/main/java/consumer/kafka/client/SampleConsumer.java is the sample Java c
     val sc = new SparkContext(conf)
 
     //Might want to uncomment and add the jars if you are running on standalone mode.
-    sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.10-jar-with-dependencies.jar")
+    sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.11-jar-with-dependencies.jar")
     val ssc = new StreamingContext(sc, Seconds(10))
 
     val topic = "mytopic"
@@ -238,7 +238,7 @@ Primary reason for WAL is , Receiver commit offset of consumed block to ZK after
 
 Hence there is a need for the WAL feature to recover already Received (but not processed) blocks from WAL written to persistence store like HDFS.
 
-But this Consumer has a different mechanism for Driver failure. Along with **consumed** offset of the Received blocks, this Consumer also maintains the offset of the **processed** blocks. Which mean, this consumer can commit offsets of the already processed blocks to ZK, and in case of Driver failures , it can start from the offset next to the last processed offset ( instead last consumed offset) for every Kafka partition. Thus Consumer can start from exact same offset since the last successful batch was processed and hence No data loss.
+**But this Consumer has a different mechanism for Driver failure**. Along with **consumed** offset of the Received blocks, this Consumer also maintains the offset of the **processed** blocks. Which mean, this consumer can commit offsets of the already processed blocks to ZK, and in case of Driver failures , it can start from the offset next to the last processed offset ( instead last consumed offset) for every Kafka partition. Thus Consumer can start from exact same offset since the last successful batch was processed and hence No data loss.
 
 ## How This Works
 
@@ -392,5 +392,5 @@ This will start the Spark Receiver and Fetch Kafka Messages for every partition 
 
 e.g. to Test Consumer provided in the package with your Kafka settings please modify it to point to your Kafka and use below command for spark submit. You may need to change the Spark-Version and Kafka-Version in pom.xml.
 
-./bin/spark-submit --class consumer.kafka.client.SampleConsumer --master spark://x.x.x.x:7077 --executor-memory 1G /<Path_To>/kafka-spark-consumer-1.0.10-jar-with-dependencies.jar
+./bin/spark-submit --class consumer.kafka.client.SampleConsumer --master spark://x.x.x.x:7077 --executor-memory 1G /<Path_To>/kafka-spark-consumer-1.0.11-jar-with-dependencies.jar
 
