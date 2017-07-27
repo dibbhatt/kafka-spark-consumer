@@ -23,8 +23,8 @@
   <name>kafka-spark-consumer</name>
 
   <properties>
-    <spark.version>2.1.0</spark.version>
-    <kafka.version>0.10.1.1</kafka.version>
+    <spark.version>2.2.0</spark.version>
+    <kafka.version>0.11.0.0</kafka.version>
   </properties>
 
   <dependencies>

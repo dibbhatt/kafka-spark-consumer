@@ -29,6 +29,7 @@ import org.apache.spark.streaming.scheduler.StreamingListenerOutputOperationStar
 import org.apache.spark.streaming.scheduler.StreamingListenerReceiverError;
 import org.apache.spark.streaming.scheduler.StreamingListenerReceiverStarted;
 import org.apache.spark.streaming.scheduler.StreamingListenerReceiverStopped;
+import org.apache.spark.streaming.scheduler.StreamingListenerStreamingStarted;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +65,10 @@ public class ReceiverStreamListener implements StreamingListener {
               config._proportional,
               config._integral,
               config._derivative);
+    }
+
+    @Override
+    public void onStreamingStarted(StreamingListenerStreamingStarted arg0) {
     }
 
     @Override
