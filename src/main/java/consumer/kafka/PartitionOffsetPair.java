@@ -18,9 +18,11 @@
 
 package consumer.kafka;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.slf4j.Logger;
@@ -38,15 +40,23 @@ public class PartitionOffsetPair<E> implements PairFlatMapFunction<Iterator<Mess
     @Override
     public Iterator<Tuple2<Integer, Long>> call(Iterator<MessageAndMetadata<E>> it) throws Exception {
         MessageAndMetadata<E> mmeta = null;
+        List<Tuple2<Integer, Long>> kafkaPartitionToOffsetList = new LinkedList<>();
+        Map<Integer, Long> offsetMap = new HashMap<>();
         while (it.hasNext()) {
             mmeta = it.next();
-            LOG.debug("Consumed partition = {}, offset = {}", mmeta.getPartition(), mmeta.getOffset());
+            if (mmeta != null) {
+              Long offset = offsetMap.get(mmeta.getPartition().partition);
+              if(offset == null) {
+                offsetMap.put(mmeta.getPartition().partition, mmeta.getOffset());
+              } else {
+                if(mmeta.getOffset() > offset) {
+                  offsetMap.put(mmeta.getPartition().partition, mmeta.getOffset());
+                }
+              }
+           }
         }
-        // Return the kafka-partition-number and the largest offset read
-        List<Tuple2<Integer, Long>> kafkaPartitionToOffsetList = new ArrayList<>(1);
-        if (mmeta != null) {
-            LOG.debug("selected largest offset {} for partition {}", mmeta.getOffset(), mmeta.getPartition());
-            kafkaPartitionToOffsetList.add(new Tuple2<>(mmeta.getPartition().partition, mmeta.getOffset()));
+        for(Map.Entry<Integer, Long> entry : offsetMap.entrySet()) {
+          kafkaPartitionToOffsetList.add(new Tuple2<>(entry.getKey(), entry.getValue()));
         }
         return kafkaPartitionToOffsetList.iterator();
     }

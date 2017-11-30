@@ -84,9 +84,7 @@ public class PartitionManager implements Serializable {
         _handler = messageHandler;
 
         Long processOffset = null;
-        Long consumedOffset = null;
-        String processPath = zkPath("processed");
-        String consumedPath = zkPath("offsets");
+        String processPath = zkPath("offsets");
 
         try {
             byte[] pOffset = _state.readBytes(processPath);
@@ -95,29 +93,19 @@ public class PartitionManager implements Serializable {
                 processOffset = Long.valueOf(new String(pOffset));
                 LOG.info("Processed offset for Partition : {} is {}",_partition.partition, processOffset);
             }
-            byte[] conffset = _state.readBytes(consumedPath);
-            LOG.info("Read consumed information from: {}", consumedPath);
-            if (conffset != null) {
-                consumedOffset = Long.valueOf(new String(conffset));
-                LOG.info("Consumed offset for Partition : {} is {}",_partition.partition, consumedOffset);
-            }
         } catch (Throwable e) {
             LOG.warn("Error reading and/or parsing at ZkNode", e);
             throw e;
         }
         // failed to parse JSON?
-        if (consumedOffset == null) {
+        if (processOffset == null) {
             _lastComittedOffset =
                     KafkaUtils.getOffset(
                             _consumer, _topic, _partition.partition, kafkaconfig);
             LOG.info("No partition information found, using configuration to determine offset");
         } else {
-          if (_restart && processOffset != null) {
             _lastComittedOffset = processOffset + 1;
-        } else {
-            _lastComittedOffset = consumedOffset;
         }
-    }
 
       LOG.info("Starting Receiver  {} : {} from offset {}", _consumer.host(), _partition.partition, _lastComittedOffset);
       _emittedToOffset = _lastComittedOffset;
@@ -147,18 +135,6 @@ public class PartitionManager implements Serializable {
     //Called every Fill Frequency
     public void next() throws Exception {
       fill();
-      //If consumer.num_fetch_to_buffer is default (1) , let commit consumed offset after every fill
-      //Otherwise consumed offset will be written after buffer is filled during triggerBlockManagerWrite
-      if ((_kafkaconfig._numFetchToBuffer == 1) && (_lastEnquedOffset >= _lastComittedOffset)) {
-        try {
-          _lastComittedOffset = _emittedToOffset;
-          _state.writeBytes(zkPath("offsets"), Long.toString(_lastComittedOffset).getBytes());
-          LOG.debug("Consumed offset {} for Partition {} written to ZK", _lastComittedOffset, _partition.partition);
-        } catch (Exception ex) {
-          LOG.error("error during ZK Commit", ex);
-          _receiver.reportError("Retry ZK Commit for Partition " + _partition, ex);
-        }
-      }
     }
 
     private long getKafkaOffset() {
@@ -200,9 +176,6 @@ public class PartitionManager implements Serializable {
             }
             _numFetchBuffered = 1;
             _lastComittedOffset = _emittedToOffset;
-            //Write consumed offset to ZK
-            _state.writeBytes(zkPath("offsets"), Long.toString(_lastComittedOffset).getBytes());
-            LOG.debug("Consumed offset {} for Partition {} written to ZK", _lastComittedOffset, _partition.partition);
           }
         } catch (Exception ex) {
           _arrayBuffer.clear();
@@ -261,6 +234,7 @@ public class PartitionManager implements Serializable {
                   synchronized (_receiver) {
                     if(mm != null) {
                       _receiver.store(mm);
+                      _lastComittedOffset = _emittedToOffset;
                       LOG.debug("PartitionManager sucessfully written offset {} for partition {} to BM", _lastEnquedOffset, _partition.partition);
                     }
                   }

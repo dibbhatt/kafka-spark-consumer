@@ -125,7 +125,7 @@ public class ProcessedOffsetManager<T> {
     }
     return consumerZkPath +  "/"
       + props.getProperty(Config.KAFKA_CONSUMER_ID)
-      + "/processed/"
+      + "/offsets/"
       + props.getProperty(Config.KAFKA_TOPIC) + "/"
       + partition;
   }
