@@ -47,7 +47,7 @@ Please see Java or Scala code example on how to use this Low Level Consumer
 And Use Below Dependency in your Maven 
 
 		<dependency>
-				<groupId>kafka.spark.consumer</groupId>
+				<groupId>dibbhatt</groupId>
 				<artifactId>kafka-spark-consumer</artifactId>
 				<version>1.0.13</version>
 		</dependency>
