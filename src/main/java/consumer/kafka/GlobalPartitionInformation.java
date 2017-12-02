@@ -46,6 +46,10 @@ public class GlobalPartitionInformation implements Iterable<Partition>,Serializa
     partitionMap.put(partitionId, broker);
   }
 
+  public Map<Integer, Broker> getPartitionMap() {
+    return partitionMap;
+  }
+
   @Override
   public String toString() {
     return "GlobalPartitionInformation{" + "partitionMap=" + partitionMap + '}';

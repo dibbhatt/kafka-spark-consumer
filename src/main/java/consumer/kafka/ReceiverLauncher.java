@@ -128,12 +128,11 @@ public class ReceiverLauncher implements Serializable {
         }
 
         final long batchDuration = jsc.ssc().graph().batchDuration().milliseconds();
-        ReceiverStreamListener listener = new ReceiverStreamListener(kafkaConfig,
-            batchDuration, numberOfPartition, terminateOnFailure);
+        ReceiverStreamListener listener = new ReceiverStreamListener(kafkaConfig, batchDuration);
 
         jsc.addStreamingListener(listener);
         //Reset the fetch size
-        Utils.setFetchRate(kafkaConfig, kafkaConfig._fetchSizeBytes);
+        Utils.setFetchRate(kafkaConfig, kafkaConfig._pollRecords);
         zkState.close();
         return unionStreams;
     }

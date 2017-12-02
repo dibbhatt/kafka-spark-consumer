@@ -32,9 +32,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("serial")
-public class KafkaConsumer<E extends Serializable> implements Runnable, Serializable, AutoCloseable {
+public class KafkaSparkConsumer<E extends Serializable> implements Runnable, Serializable, AutoCloseable {
 
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaConsumer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaSparkConsumer.class);
 
     private KafkaConfig _kafkaconfig;
     private PartitionCoordinator _coordinator;
@@ -45,7 +45,7 @@ public class KafkaConsumer<E extends Serializable> implements Runnable, Serializ
     private Receiver<MessageAndMetadata<E>> _receiver;
     private KafkaMessageHandler _messageHandler;
 
-    public KafkaConsumer(
+    public KafkaSparkConsumer(
             KafkaConfig config,
             ZkState zkState,
             Receiver<MessageAndMetadata<E>> receiver,

@@ -26,15 +26,13 @@ import java.util.Properties;
 @SuppressWarnings("serial")
 public class KafkaConfig implements Serializable {
 
-  //Default fetch size . 1 MB
-  public int _fetchSizeBytes = 1048576;
+  //Default poll size 500.
+  public int _pollRecords = 500;
   //Default fill frequency 1 Seconds
   public int _fillFreqMs = 1000;
-  //Default minimum fetch size 512 KB
-  public int _minFetchSizeBytes = 524288;
-  //Max allowable fetch size
-  public int _maxFetchSizeBytes = _fetchSizeBytes * 2;
-  public int _bufferSizeBytes = 1048576;
+  //Default minimum fetch size 50
+  public int _minpollRecords = 50;
+
 
   //Automatic refresh of ZK Coordinator to check for Leader Re-balance
   public int _refreshFreqSecs = 300;
@@ -47,31 +45,33 @@ public class KafkaConfig implements Serializable {
   //PID Controller based back-pressure mechanism to rate control
   public boolean _backpressureEnabled = true;
   public int _maxRestartAttempts = -1;
-  public long _startOffsetTime = kafka.api.OffsetRequest.EarliestTime();
   public long _stateUpdateIntervalMs = 2000;
   public Map<String,String> _stateConf;
   //Number of fetch consumer will buffer before writing to Spark Block Manager
   public int _numFetchToBuffer = 1;
   //Consumer will throttle to Zero rate if Queued batches reach this value
   //This is to avoid memory pressure
-  public int _batchQueueToThrottle = 1;
+  public int _batchQueueToThrottle = 3;
 
   //Default PID values for Controller
   public double _proportional = 1.0;
   public double _integral = 0.0;
   public double _derivative = 0;
-
-  //Parameters for Controllers
-
-  //percent of Batch duration taking into rate calculation. 100 % default
-  public double _safeBatchPercent = 1.0;
-  //Max allowable rate change possible. 20 % default
-  public double _maxRateChangePercent = 0.2;
   
   public String brokerZkPath = "/brokers";
   public String consumerZkPath = "/consumers";
 
+  public Properties props;
+
   public KafkaConfig(Properties props) {
+
+    this.props = props;
+    props.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+    props.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+    props.put("enable.auto.commit", "false");
+    props.put("auto.offset.reset", "none");
+    props.put("group.id", props.getProperty("kafka.consumer.id"));
+
 
     //ZK Host and Port for Kafka Cluster
     String zkHost = props.getProperty("zookeeper.hosts");
@@ -98,16 +98,12 @@ public class KafkaConfig implements Serializable {
       _numFetchToBuffer = Integer.parseInt(props.getProperty("consumer.num_fetch_to_buffer"));
     }
 
-    if (props.getProperty("consumer.fetchsizebytes") != null) {
-      _fetchSizeBytes = Integer.parseInt(props.getProperty("consumer.fetchsizebytes"));
+    if (props.getProperty("max.poll.records") != null) {
+      _pollRecords = Integer.parseInt(props.getProperty("max.poll.records"));
     }
 
-    if (props.getProperty("consumer.min.fetchsizebytes") != null) {
-      _minFetchSizeBytes = Integer.parseInt(props.getProperty("consumer.min.fetchsizebytes"));
-    }
-
-    if (props.getProperty("consumer.max.fetchsizebytes") != null) {
-      _maxFetchSizeBytes = Integer.parseInt(props.getProperty("consumer.max.fetchsizebytes"));
+    if (props.getProperty("min.poll.records") != null) {
+      _minpollRecords = Integer.parseInt(props.getProperty("min.poll.records"));
     }
 
     if (props.getProperty("consumer.fillfreqms") != null) {
@@ -142,14 +138,6 @@ public class KafkaConfig implements Serializable {
       _batchQueueToThrottle = Integer.parseInt(props.getProperty("consumer.queue.to.throttle"));
     }
 
-    if (props.getProperty("consumer.safe.batch.percent") != null) {
-      _safeBatchPercent = Double.parseDouble(props.getProperty("consumer.safe.batch.percent"));
-    }
-
-    if (props.getProperty("consumer.max.rate.change.percent") != null) {
-      _maxRateChangePercent = Double.parseDouble(props.getProperty("consumer.max.rate.change.percent"));
-    }
-
     _stateConf = new HashMap<String, String>();
     _stateConf.put(Config.ZOOKEEPER_HOSTS, zkHost);
     _stateConf.put(Config.ZOOKEEPER_PORT, zkPort);
@@ -159,5 +147,9 @@ public class KafkaConfig implements Serializable {
     _stateConf.put(Config.ZOOKEEPER_CONSUMER_PATH, consumerZkPath);
     _stateConf.put(Config.ZOOKEEPER_CONSUMER_CONNECTION, consumerConnection);
     _stateConf.put(Config.KAFKA_CONSUMER_ID, consumerId);
+  }
+
+  public Properties getProperties() {
+    return this.props;
   }
 }

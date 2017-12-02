@@ -18,8 +18,6 @@
 
 package consumer.kafka;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.spark.streaming.scheduler.StreamingListener;
 import org.apache.spark.streaming.scheduler.StreamingListenerBatchCompleted;
 import org.apache.spark.streaming.scheduler.StreamingListenerBatchStarted;
@@ -41,25 +39,18 @@ public class ReceiverStreamListener implements StreamingListener {
     private int batchSubmittedCount = 0;
     private int batchCompletedCount = 0;
     private KafkaConfig config;
-    private int MAX_RATE;
     private int THROTTLE_QUEUE;
     private int MIN_RATE;
     private int fillFreqMs;
-    private AtomicBoolean terminateOnFailure;
     private long batchDuration;
-    private int partitionCount;
     private PIDController controller;
 
-    public ReceiverStreamListener(KafkaConfig config,
-                                  long batchDuration, int partitionCount, AtomicBoolean terminateOnFailure) {
+    public ReceiverStreamListener(KafkaConfig config,long batchDuration) {
       this.config = config;
-      MAX_RATE = config._maxFetchSizeBytes;
       THROTTLE_QUEUE = config._batchQueueToThrottle;
-      MIN_RATE = config._minFetchSizeBytes;
+      MIN_RATE = config._minpollRecords;
       fillFreqMs = config._fillFreqMs;
-      this.terminateOnFailure = terminateOnFailure;
       this.batchDuration = batchDuration;
-      this.partitionCount = partitionCount;
 
       controller = new PIDController(
               config._proportional,
@@ -105,10 +96,10 @@ public class ReceiverStreamListener implements StreamingListener {
       int queueSize = batchSubmittedCount - batchCompletedCount;
       if (queueSize > THROTTLE_QUEUE) {
         LOG.warn("stop consumer as pending queue {} greater than configured limit {}",queueSize, THROTTLE_QUEUE);
-        //Set fetch size to 1 KB to throttle the consumer
-        Utils.setFetchRate(config,1024);
+        //Set fetch size to 10 messages to throttle the consumer
+        Utils.setFetchRate(config,MIN_RATE);
       } else if(!config._backpressureEnabled) {
-        Utils.setFetchRate(config, config._fetchSizeBytes);
+        Utils.setFetchRate(config, config._pollRecords);
       }
     }
 
@@ -127,23 +118,22 @@ public class ReceiverStreamListener implements StreamingListener {
                   (Long) batchCompleted.batchInfo().processingDelay().get();
           long schedulingDelay =
                   (Long) batchCompleted.batchInfo().schedulingDelay().get();
-          long numrecords = batchCompleted.batchInfo().numRecords();
           //Skip first batch as it may pull very less records which can have wrong rate for next batch
           if(batchCompletedCount > 1) {
             // Get last batch fetch size
             int batchFetchSize = getFetchSize();
             LOG.info("Current Rate in ZooKeeper  : " + batchFetchSize);
             // Revise rate on last rate
-            int newRate = controller.calculateRate(config, batchDuration, partitionCount,
-                    batchFetchSize, fillFreqMs, schedulingDelay, processingDelay, numrecords);
+            int newRate = controller.calculateRate(config, batchDuration,
+                    batchFetchSize, fillFreqMs, schedulingDelay, processingDelay);
             LOG.info("Modified Rate by Controller  : " + newRate);
             // Setting to Min Rate
             if (newRate < MIN_RATE) {
               newRate = MIN_RATE;
             }
             // Setting to Max Rate
-            if (newRate > MAX_RATE) {
-              newRate = MAX_RATE;
+            if (newRate > config._pollRecords) {
+              newRate = config._pollRecords;
             }
             if (queueSize > THROTTLE_QUEUE) {
               LOG.warn("Controller rate not applied as waiting queue is greater than throttle queue");
@@ -165,10 +155,10 @@ public class ReceiverStreamListener implements StreamingListener {
             LOG.info("Current Fetch Rate for topic {} is {}",
                 config._stateConf.get("kafka.topic"), newFetchSize);
          } else {
-            newFetchSize = config._fetchSizeBytes;
+            newFetchSize = config._pollRecords;
         }
       } catch (Throwable e) {
-          newFetchSize = config._fetchSizeBytes;
+          newFetchSize = config._pollRecords;
       }finally {
         state.close();
       }

@@ -26,12 +26,13 @@ package consumer.kafka;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Properties;
 
-import kafka.javaapi.consumer.SimpleConsumer;
-
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,11 +44,13 @@ public class DynamicPartitionConnections implements Serializable {
 
   class ConnectionInfo implements Serializable {
 
-    SimpleConsumer consumer;
-    Set<Integer> partitions = new HashSet<Integer>();
-
-    public ConnectionInfo(SimpleConsumer consumer) {
+    KafkaConsumer<byte[], byte[]> consumer;
+    public ConnectionInfo(KafkaConsumer<byte[], byte[]> consumer, String topic, int partition) {
       this.consumer = consumer;
+      TopicPartition tpartition = new TopicPartition(topic, partition);
+      List<TopicPartition> lst = new LinkedList<TopicPartition>();
+      lst.add(tpartition);
+      consumer.assign(lst);
     }
   }
 
@@ -62,28 +65,23 @@ public class DynamicPartitionConnections implements Serializable {
     _reader = brokerReader;
   }
 
-  public SimpleConsumer register(Partition partition) {
+  public KafkaConsumer<byte[], byte[]> register(Partition partition, String topic) {
     Broker broker = _reader.getCurrentBrokers().getBrokerFor(partition.partition);
-    return register(broker, partition.partition);
+    return register(broker, partition.partition, topic);
   }
 
-  public SimpleConsumer register(Broker host, int partition) {
+
+  public KafkaConsumer<byte[], byte[]> register(Broker host, int partition, String topic) {
     if (!_connections.containsKey(host)) {
-      _connections.put(host, new ConnectionInfo(
-          new SimpleConsumer(
-            host.host,
-            host.port,
-            _config._socketTimeoutMs,
-            _config._bufferSizeBytes,
-            (String) _config._stateConf.get(Config.KAFKA_CONSUMER_ID))
-          ));
+      Properties p = _config.getProperties();
+      p.setProperty("bootstrap.servers", host.host + ":" + host.port);
+      _connections.put(host, new ConnectionInfo (new KafkaConsumer<byte[], byte[]>(p), topic, partition));
     }
     ConnectionInfo info = _connections.get(host);
-    info.partitions.add(partition);
     return info.consumer;
   }
 
-  public SimpleConsumer getConnection(Partition partition) {
+  public KafkaConsumer<byte[], byte[]> getConnection(Partition partition) {
     ConnectionInfo info = _connections.get(partition.host);
     if (info != null) {
       return info.consumer;
@@ -91,13 +89,10 @@ public class DynamicPartitionConnections implements Serializable {
     return null;
   }
 
-  public void unregister(Broker port, int partition) {
-    ConnectionInfo info = _connections.get(port);
-    info.partitions.remove(partition);
-    if (info.partitions.isEmpty()) {
-      info.consumer.close();
-      _connections.remove(port);
-    }
+  public void unregister(Broker host, int partition) {
+    ConnectionInfo info = _connections.get(host);
+    info.consumer.close();
+    _connections.remove(host);
   }
 
   public void unregister(Partition partition) {

@@ -27,7 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import consumer.kafka.KafkaConfig;
-import consumer.kafka.KafkaConsumer;
+import consumer.kafka.KafkaSparkConsumer;
 import consumer.kafka.KafkaMessageHandler;
 import consumer.kafka.MessageAndMetadata;
 import consumer.kafka.ZkState;
@@ -39,7 +39,7 @@ public class KafkaReceiver<E extends Serializable> extends Receiver<MessageAndMe
     private static final Logger LOG = LoggerFactory.getLogger(KafkaReceiver.class);
     private final Properties _props;
     private int _partitionId;
-    private KafkaConsumer _kConsumer;
+    private KafkaSparkConsumer _kConsumer;
     private transient Thread _consumerThread;
     private int maxRestartAttempts;
     private int restartAttempts;
@@ -74,7 +74,7 @@ public class KafkaReceiver<E extends Serializable> extends Receiver<MessageAndMe
         maxRestartAttempts = kafkaConfig._maxRestartAttempts;
         restartAttempts = restartAttempts + 1;
         ZkState zkState = new ZkState(kafkaConfig);
-        _kConsumer = new KafkaConsumer(kafkaConfig, zkState, this, _messageHandler);
+        _kConsumer = new KafkaSparkConsumer(kafkaConfig, zkState, this, _messageHandler);
         _kConsumer.open(_partitionId);
 
         Thread.UncaughtExceptionHandler eh = new Thread.UncaughtExceptionHandler() {

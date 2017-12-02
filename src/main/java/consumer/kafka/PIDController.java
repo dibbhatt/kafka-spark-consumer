@@ -28,8 +28,6 @@ public class PIDController {
   private double derivative;
   private long latestTime;
   private double latestError = -1;
-  private int lastBatchFetchPercentage = 0;
-  public long lastBatchRecords = 1;
   public boolean controllerStarted;
 
   public static final Logger LOG = LoggerFactory.getLogger(PIDController.class);
@@ -44,43 +42,34 @@ public class PIDController {
   }
 
   public int calculateRate(
-    KafkaConfig config, long batchDurationMs, int partitionCount, int fetchSizeBytes,
-    int fillFreqMs, long schedulingDelayMs, long processingDelayMs, long numRecords) {
+    KafkaConfig config, long batchDurationMs, int pollSize,
+    int fillFreqMs, long schedulingDelayMs, long processingDelayMs) {
 
     long time = System.currentTimeMillis();
     double delaySinceUpdate = (time - latestTime);
 
-    //Safe guard 90% of Batch Duration
-    batchDurationMs = (long) ((long)batchDurationMs * config._safeBatchPercent);
+    //Fixed rate mesages/sec
+    double fixedRate = (pollSize / (double)fillFreqMs ) * 1000;
 
-    //Every Fill create one Spark Block
-    double blocksPerSecond = 1000 / (double)fillFreqMs;
-
-    //Incoming fetchSizeBytes set to 1KB due to Queue size increase.
-    //Let not consider that to calculate  next rate
-    if(fetchSizeBytes == 1024) {
-      fetchSizeBytes = config._fetchSizeBytes;
+    double processingRate = fixedRate;
+    if(processingDelayMs > 0) {
+      double processingDecay = batchDurationMs / (double)processingDelayMs;
+      processingRate = fixedRate * processingDecay ;
     }
 
     //Pull Rate bytes / seconds
-    double fixedRate = (partitionCount * fetchSizeBytes) * blocksPerSecond;
+    System.out.println("processingRate rate " + processingRate);
+    System.out.println("fixed rate " + fixedRate);
 
-    double processingDecay = 1.0;
+    //Proportional Error = Fixed Rate - Processing Rate in records / seconds
+    double proportationalError = fixedRate - processingRate;
+    System.out.println("P "+proportationalError);
 
-    //Decay in processing
-    if(processingDelayMs > 0) {
-      processingDecay = batchDurationMs / (double) processingDelayMs;
-    }
-
-    // Processing Rate in bytes / seconds
-    double processingRate = partitionCount * fetchSizeBytes * blocksPerSecond  * processingDecay;
-
-    //Proportional Error = Fixed Rate - Processing Rate in bytes / seconds
-    double proportationalError = (double) (fixedRate - processingRate);
-
-    //Historical Error = Scheduling Delay * Processing Rate / Batch Duration (in bytes /second)
+    //Historical Error = Scheduling Delay * Processing Rate / Batch Duration (in records /second)
     double historicalError = (schedulingDelayMs * processingRate) / batchDurationMs;
 
+    System.out.println("H "+historicalError);
+    
     //Differential Error. Error Rate is changing (in bytes /second)
     double differentialError = 0.0;
 
@@ -94,26 +83,12 @@ public class PIDController {
         - derivative * differentialError);
 
     //Predicted next batch fetch rate
-    double revisedFetchSize = (revisedRate / partitionCount) / blocksPerSecond;
-    //Predicted next batch fetch percentage
-    int nextBatchFetchPercentage = (int)(((double)(((revisedFetchSize - fetchSizeBytes) / fetchSizeBytes)) * 100));
-    //Max allowable change is 20 %.
-    //Cap the max change to avoid overshoot
-    if(Math.abs(nextBatchFetchPercentage) > (int)(config._maxRateChangePercent * 100)) {
-      if(nextBatchFetchPercentage > 0) {
-        revisedFetchSize = fetchSizeBytes + fetchSizeBytes * config._maxRateChangePercent;
-        nextBatchFetchPercentage = (int)(config._maxRateChangePercent * 100);
-      } else {
-        revisedFetchSize = fetchSizeBytes - fetchSizeBytes * config._maxRateChangePercent;
-        nextBatchFetchPercentage = - (int)(config._maxRateChangePercent * 100);
-      }
-    }
+    double revisedFetchSize = revisedRate;
 
     LOG.info("======== Rate Revision Starts ========");
-    LOG.info("Current Fetch Size    : " + fetchSizeBytes);
+    LOG.info("Current Fetch Size    : " + pollSize);
     LOG.info("Fill Freq             : " + fillFreqMs);
     LOG.info("Batch Duration        : " + batchDurationMs);
-    LOG.info("Partition count       : " + partitionCount);
     LOG.info("Scheduling Delay      : " + schedulingDelayMs);
     LOG.info("Processing Delay      : " + processingDelayMs);
     LOG.info("Fixed Rate            : " + (int)fixedRate);
@@ -122,46 +97,14 @@ public class PIDController {
     LOG.info("HistoricalError       : " + (int)historicalError);
     LOG.info("DifferentialError     : " + (int)differentialError);
     LOG.info("Reviced Rate          : " + (int)revisedRate);
-    LOG.info("Proposed FetchPercent : " + (int)nextBatchFetchPercentage);
 
     if(!controllerStarted) {
       //warm up controller for first iteration
       controllerStarted = true;
-      lastBatchRecords = numRecords;
-      lastBatchFetchPercentage = nextBatchFetchPercentage;
-      revisedFetchSize = config._fetchSizeBytes;
-    } else {
-      // Check if predicted rate can be applied based on historical changes
-      // If predicted percentage > 0, check if number of records fetched in equal proportion
-     if(nextBatchFetchPercentage > 0) {
-        int currentBatchRecordPercentage = (int)(((((numRecords - lastBatchRecords) / (double)lastBatchRecords)) * 100));
-        LOG.info("Last FetchPercent     : " + (int)lastBatchFetchPercentage);
-        LOG.info("Current RecordPercent : " + (int)currentBatchRecordPercentage);
-        //Consumed records in this batch is higher than earlier batch
-        if(currentBatchRecordPercentage > 0 && currentBatchRecordPercentage < nextBatchFetchPercentage ) {
-          revisedFetchSize = fetchSizeBytes + fetchSizeBytes * currentBatchRecordPercentage / 100;
-          nextBatchFetchPercentage = currentBatchRecordPercentage;
-          //Lower number of records fetched from earlier batch. Let lower the rate
-        } else if (currentBatchRecordPercentage <= 0) {
-          revisedFetchSize = fetchSizeBytes + fetchSizeBytes * currentBatchRecordPercentage / 100;
-          //If this goes below configured _fetchSizeBytes , floor it
-          if(revisedFetchSize < config._fetchSizeBytes) {
-            revisedFetchSize = config._fetchSizeBytes;
-            nextBatchFetchPercentage = 0;
-          } else {
-            nextBatchFetchPercentage = currentBatchRecordPercentage;
-          }
-        }
-      }
-
-      LOG.info("Last FetchRecords     : " + (int)lastBatchRecords);
-      LOG.info("Current FetchRecords  : " + (int)numRecords);
-      //These will be used for next batch
-      lastBatchRecords = (numRecords > 0) ? numRecords : 1;
-      lastBatchFetchPercentage = nextBatchFetchPercentage;
+      revisedFetchSize = config._pollRecords;
     }
+
     LOG.info("Reviced FetchSize     : " + (int)revisedFetchSize);
-    LOG.info("Reviced PercentChange : " + nextBatchFetchPercentage ) ;
     LOG.info("======== Rate Revision Ends ========");
     latestError = proportationalError;
     latestTime = time;
