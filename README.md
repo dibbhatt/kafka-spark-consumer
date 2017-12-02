@@ -6,35 +6,44 @@ Original Storm Kafka Spout Code has been modified to work with Spark Streaming.
 
 This utility will help to pull messages from Kafka using Spark Streaming and have better handling of the Kafka Offsets and handle failures.
 
-This Consumer have implemented a Custom Reliable Receiver which uses low level Kafka Consumer API to fetch messages from Kafka and store every received block in Spark BlockManager. The logic will automatically detect number of partitions for a topic and spawn as many Kafka Receiver based on configured number of Receivers. Each Receiver can fetch messages from one or more Kafka Partitions.  Receiver commit the Kafka offsets of fetched blocks once store to Spark BlockManager is successful.
-
+This Consumer have implemented a Custom Reliable Receiver which uses Kafka Consumer API to fetch messages from Kafka and store every received block in Spark BlockManager. The logic will automatically detect number of partitions for a topic and spawn as many Kafka Receiver based on configured number of Receivers. Each Receiver can fetch messages from one or more Kafka Partitions.  
 e.g. if Kafka have 100 partitions of a Topic, and Spark Consumer if configured with 20 Receivers, each Receiver will handle 5 partition. 
+
+This consumer can commit the offsets of processed batch ,  once Spark Streaming batch is completed.
 
 In Spark driver code , Receivers is launched by calling **ReceiverLauncher.launch**
 
 Please see Java or Scala code example on how to use this Low Level Consumer
 
+## Kafka-Spark-Consumer Version Compatibility
+
+**Version 1.0.14** : Spark verison 2.x and above. Kafka version 0.10 and above. **Support for Kafka Security** . **Used New Kafka Consumer API**
+
+**Version 1.0.13** : Spark version 2.x and above. All Kafka version ( 0.8.x, 0.9.x, 0.10.x, 0.11.x). No support for Kafka Security. **Used Low Level SimpleConsumer API**
+
+**Version 1.0.9** : Spark Version earlier to 2.0 ( i.e. 1.6 and prior). All Kafka version ( 0.8.x, 0.9.x, 0.10.x, 0.11.x). No support for Kafka Security. **Used Low Level SimpleConsumer API**
+
+
 ## Salient Feature of Kafka-Spark-Consumer
 
-- This Consumer uses **Zookeeper** for storing the offset for each Kafka partition, which will help to recover in case of failure
+- User latest Kafka Consumer API. Support for **Kafka Security**
+- **Zookeeper** for storing the offset for each Kafka partition, which will help to recover in case of failure
 - Spark streaming job using this Consumer **does not require WAL** for recovery from Driver or Executor failures. As this consumer has capability to store the processed offset after every Batch interval, in case of any failure, Consumer can start from the correct offset from the last **Processed** offset.
-- This Consumer has implemented **PID (Proportional , Integral , Derivative )**  based Rate Controller for controlling Back-Pressure by altering the **Spark Block Size**
+- This Consumer has implemented **PID (Proportional , Integral , Derivative )**  based Rate Controller for controlling Back-Pressure.
 - This consumer have capability to use **Message Interceptor** which can be used to preprocess kafka messages before writing to Spark Block Manager
-- One can use **Consumer Lag Checker** (like ConsumerOffsetChecker) tool to find Consumer Lag
+- Support for **Consumer Lag Checker** (like ConsumerOffsetChecker) tool to find Consumer Lag
 
 # What is Different from Spark Out of Box Kafka Consumers
 
-* This Consumer is Receiver based fault tolerant reliable consumer designed using Kafka Low Level Simple Consumer API. This Receiver is designed to recover from any underlying failure and does not require any WAL feature in case of Driver failure. Please refer to **Consumer Recovery from Driver/Executor Crash** section below for more details. 
-
-* This consumer uses Kafka Low Level Simple Consumer API which is much faster than Kafka High Level API. Low Level Consumer API is compatible across Kafka versions 0.8, 0.9 and 0.10
+* This Consumer is Receiver based fault tolerant reliable consumer . This Receiver is designed to recover from any underlying failure and does not require WAL feature in case of Driver failure. Please refer to **Consumer Recovery from Driver/Executor Crash** section below for more details. 
 
 * This Consumer have mechanism to create Block from Kafka Stream and write to Spark BlockManager ( See more details in **Consumer Tuning Options** section below ).  
 
-* This Consumer has in-built PID (Proportional, Integral, Derivative ) Controller to control the **Spark Back Pressure** by modifying the size of Block it can consume. The PID Controller rate feedback loop mechanism is built using Zookeeper. The logic to control Back Pressure is by altering size of the Block consumed per batch from Kafka. As the Back Pressure is built into the Consumer, this consumer can be used with any version of Spark if there is a need to have a back pressure controlling mechanism in given Spark / Kafka environment. Please refer **Spark Consumer Properties** section on how to enable back pressure. Also see **Consumer Tuning Options**  section on how to tune PID Controller.
+* This Consumer has in-built PID (Proportional, Integral, Derivative ) Controller to control the **Spark Back Pressure** . The PID Controller rate feedback loop mechanism is built using Zookeeper. The logic to control Back Pressure is by altering numer of the messaged consumed during every poll. Please refer **Spark Consumer Properties** section on how to enable back pressure. Also see **Consumer Tuning Options**  section on how to tune PID Controller.
 
-* Number of partitions in RDD generated by this consumer is decoupled from the number of Kafka partitions. One can control the RDD partitions by controlling the Block creation interval. Hence the processing parallelism is not dependent on Kafka Partition. Let assume you have Kafka Topic with 10 Partition. And your Block Interval is 200 Ms and Batch Interval is 5 Sec. This Consumer will generate 5 Blocks every second (1 second / Block Interval ) for each Partitions , and 5 x 10 x 5 = 250 Blocks for every Batch. As every block written to Spark BlockManager within Batch interval creates one Partition for underlying RDD , which mean every RDD created per batch will have 250 Partitions and this will increase processing parallelism. Whereas , if RDD partition is same as Kafka partition , every RDD will only have 10 partitions (same as kafka topic partition) and limit your processing parallelism.
+* Number of partitions in RDD generated by this consumer is decoupled from the number of Kafka partitions. One can control the RDD partitions by controlling the Block creation interval and Block Size. Let assume you have Kafka Topic with 10 Partition. And your Block Interval is 200 Ms and Batch Interval is 5 Sec. This Consumer will generate 5 Blocks every second (1 second / Block Interval ) for each Partitions , and 5 x 10 x 5 = 250 Blocks for every Batch. As every block written to Spark BlockManager within Batch interval creates one Partition for underlying RDD , which mean every RDD created per batch will have 250 Partitions and this will increase processing parallelism. Whereas , if RDD partition is same as Kafka partition , every RDD will only have 10 partitions (same as kafka topic partition) and limit your processing parallelism.
 
-* This Consumer will enable end to end **No Data Loss guarantee** without support for Spark WAL feature. Refer to **Consumer Recovery from Driver/Executor Crash** section for more details.
+* Consumer will enable end to end **No Data Loss guarantee** without support for Spark WAL feature. Refer to **Consumer Recovery from Driver/Executor Crash** section for more details.
 
 # Instructions for Manual build 
 
@@ -49,7 +58,7 @@ And Use Below Dependency in your Maven
 		<dependency>
 				<groupId>dibbhatt</groupId>
 				<artifactId>kafka-spark-consumer</artifactId>
-				<version>1.0.13</version>
+				<version>1.0.14</version>
 		</dependency>
 
 # Accessing from Spark Packages
@@ -59,18 +68,18 @@ And Use Below Dependency in your Maven
 Include this package in your Spark Applications using:
 
 * spark-shell, pyspark, or spark-submit
-	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.13
+	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.14
 * sbt
 
 If you use the sbt-spark-package plugin, in your sbt build file, add:
 
-	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.13"
+	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.14"
 
 Otherwise,
 
 	resolvers += "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven"
 			  
-	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.13"
+	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.14"
 
 
 * Maven
@@ -82,7 +91,7 @@ In your pom.xml, add:
 	  <dependency>
 		<groupId>dibbhatt</groupId>
 		<artifactId>kafka-spark-consumer</artifactId>
-		<version>1.0.13</version>
+		<version>1.0.14</version>
 	  </dependency>
 	</dependencies>
 	<repositories>
@@ -95,7 +104,7 @@ In your pom.xml, add:
 
 # Running with different Spark and Kafka
 
-This consumer supports all Kafka versions 0.8, 0.9, 0.10 and 0.11. And work with all Spark versions. One need to include respective Spark and Kafka versions in application pom.xml
+This consumer supports all Kafka versions 0.8, 0.9, 0.10 and 0.11. And work with all Spark versions. One need to include respective Spark and Kafka versions in application pom.xml. Please refer to version compatibility section above
 
 e.g. Below example to include dependency for Spark 2.2.0 and Kafka 0.11.0
 
@@ -128,20 +137,15 @@ e.g. Below example to include dependency for Spark 2.2.0 and Kafka 0.11.0
         </exclusion>
       </exclusions>
     </dependency>
+	<dependency>
+	    <groupId>org.apache.kafka</groupId>
+	    <artifactId>kafka-clients</artifactId>
+	    <version>${kafka.version}</version>
+	</dependency>
     <dependency>
-      <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka_2.11</artifactId>
-      <version>${kafka.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.zookeeper</groupId>
-          <artifactId>zookeeper</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>log4j</groupId>
-          <artifactId>log4j</artifactId>
-        </exclusion>
-      </exclusions>
+      <groupId>org.scala-lang</groupId>
+      <artifactId>scala-library</artifactId>
+      <version>2.11.0</version>
     </dependency>
 </dependencies>
 ```
@@ -162,16 +166,14 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
 	* **kafka.consumer.id**=consumer-id
 * OPTIONAL - Force From Start . Default Consumer Starts from Latest offset.
 	* **consumer.forcefromstart**=false
-* OPTIONAL - Fetch Size in Bytes . Default 1 MB
-	* **consumer.fetchsizebytes**=1048576
+* OPTIONAL - Maximum messages fetched in one Poll. Default 500
+	* **max.poll.records**=1048576
 * OPTIONAL - Fill Frequence in MS . Default 1 Second
 	* **consumer.fillfreqms**=1000
 * OPTIONAL - Consumer Back Pressure Support. Default is true
 	* **consumer.backpressure.enabled**=true
-* OPTIONAL - Minimum Fetch Size if Back Pressure kicked in. Default 500 KB
-	* **consumer.min.fetchsizebytes**=524288
 * OPTIONAL - This can further control RDD Partitions. Number of Blocks fetched from Kafka to merge before writing to Spark Block Manager. Default is 1
-	* **consumer.num_fetch_to_buffer**=2
+	* **consumer.num_fetch_to_buffer**=1
 
 # Java Example
 
@@ -182,13 +184,13 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
     props.put("kafka.consumer.id", "kafka-consumer");
     props.put("zookeeper.consumer.connection", "x.x.x.x:2181");
     // Optional Properties
-    props.put("consumer.fetchsizebytes", "1048576");
+    props.put("max.poll.records", "250");
     props.put("consumer.fillfreqms", "1000");
 
     SparkConf _sparkConf = new SparkConf();
     JavaStreamingContext jsc = new JavaStreamingContext(_sparkConf, Durations.seconds(30));
     // Specify number of Receivers you need.
-    int numberOfReceivers = 1;
+    int numberOfReceivers = 3;
 
     JavaDStream<MessageAndMetadata<byte[]>> unionStreams = ReceiverLauncher.launch(
         jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
@@ -237,7 +239,7 @@ The src/main/java/consumer/kafka/client/SampleConsumer.java is the sample Java c
     val sc = new SparkContext(conf)
 
     //Might want to uncomment and add the jars if you are running on standalone mode.
-    sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.13-jar-with-dependencies.jar")
+    sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.14-jar-with-dependencies.jar")
     val ssc = new StreamingContext(sc, Seconds(10))
 
     val topic = "mytopic"
@@ -253,7 +255,7 @@ The src/main/java/consumer/kafka/client/SampleConsumer.java is the sample Java c
         "zookeeper.consumer.connection" -> "x.x.x.x:2181",
         "kafka.consumer.id" -> "kafka-consumer",
         //optional properties
-        "consumer.fetchsizebytes" -> "1048576",
+        "max.poll.records" -> "250",
         "consumer.fillfreqms" -> "1000"
 
     val props = new java.util.Properties()
@@ -278,6 +280,21 @@ Complete example is available here :
 	
 examples/scala/LowLevelKafkaConsumer.scala is a sample scala code on how to use this utility.
 
+# Kafka Security
+
+latest version of this consumer 1.0.14 supports Kafka Security. One just need to add necessary kafka security properties to pull messages from Secured kafka cluster. e.g.
+
+    props.put("security.protocol", "SASL_SSL");
+    props.put("ssl.truststore.location","./truststore");
+    props.put("ssl.truststore.password", "pass");
+
+This consumer by default using below properties, which can not be changed. If you want diffrent key/value.deserializer, you can do it either in Spark Job or using the **Custom Message Hanlder** concept mentioned below.
+
+    props.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+    props.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+    props.put("enable.auto.commit", "false");
+    props.put("auto.offset.reset", "none");
+
 # Consumer Recovery from Driver/Executor Crash without WAL
 
 Please refer to this blog which explains why WAL is needed for Zero Data Loss.
@@ -288,7 +305,7 @@ Primary reason for WAL is , Receiver commit offset of consumed block to ZK after
 
 Hence there is a need for the WAL feature to recover already Received (but not processed) blocks from WAL written to persistence store like HDFS.
 
-**But this Consumer has a different mechanism for Driver failure**. Along with **consumed** offset of the Received blocks, this Consumer also maintains the offset of the **processed** blocks. Which mean, this consumer can commit offsets of the already processed blocks to ZK, and in case of Driver failures , it can start from the offset next to the last processed offset ( instead last consumed offset) for every Kafka partition. Thus Consumer can start from exact same offset since the last successful batch was processed and hence No data loss.
+**But this Consumer has a different mechanism for Driver failure**. Consumer maintains the offset of the **processed** blocks. Which mean, this consumer can commit offsets of the already processed blocks to ZK, and in case of Driver failures , it can start from the offset next to the last processed offset ( instead last consumed offset) for every Kafka partition. Thus Consumer can start from exact same offset since the last successful batch was processed and hence No data loss.
 
 ## How This Works
 
@@ -298,9 +315,7 @@ Every write to Spark Block Manager creates one Partition for underlying RDD. Say
 
 Receiver can write One Block of data pulled from Kafka during every Fetch, or can merge multiple Fetches together . This can be used to further control the RDD partitions. This is controlled by **consumer.num_fetch_to_buffer** property ( default is 1). Receiver wraps every messages of a given Block with some additional MetaData like message offset and kafka Partition ID. 
 
-As every Receiver thread fetch from single Kafka partition, blocks written by any given Receiver thread will contains the messages (and its MetaData) from same Kafka partition. Which mean every partition of a RDD will have messages belongs to single Kafka partition . Also as the messages in given Block are always in ascending order, if you get the highest offset of a given RDD partition,  that will be the highest offset for a Kafka partition for the same RDD partition. 
-
-As one Receiver thread can write multiple blocks to BlockManager, we need to find highest offset for every RDD Partition which belongs to same Kafka partition , and repeat the same for all Kafka partition . Finally we can find the highest offset for a Kafka partition amongst all RDD partition.
+As one Receiver thread can write multiple blocks to BlockManager, it need to find highest offset for every RDD Partition which belongs to same Kafka partition , and repeat the same for all Kafka partition . Finally it can find the highest offset for a Kafka partition amongst all RDD partition.
 e.g. , if RDD Partition 4, 8 and 12 are generated by Receiver Thread X for Kafka Partition Y , and highest offset for 4 is 100, 8 is 400 and 12 is 800;  then highest offset for Kafka Partition  Y for this Batch is 800. 
 
 This Consumer perform very simple Map Reduce logic to get the highest offset for every Kafka partitions belongs to a given RDD for a Batch. This <Partition, Offset> tuple is written back to ZK as already processed offset after the Batch completes.  
@@ -318,48 +333,43 @@ For Java
     JavaDStream<MessageAndMetadata<byte[]>> unionStreams = ReceiverLauncher.launch(
         jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
     
-    // 1. Get the Max offset list for each Kafka partitions
+    // **1**. Get the Max offset list for each Kafka partitions
     JavaPairDStream<Integer, Iterable<Long>> partitonOffset =  
         ProcessedOffsetManager.getPartitionOffset(unionStreams,  props);
   
     //Start Application Logic
       **Process Stream**
     //End Application Logic
-
-    // 2. Find the Max amongst the list and Persists the Max Offset to ZK
+ 
+    // **2**. Find the Max amongst the list and Persists the Max Offset to ZK
     ProcessedOffsetManager.persists(partitonOffset, props)
 
 For Scala
     
     //Get the Stream 
     val unionStreams = ReceiverLauncher.launch(ssc, props, numberOfReceivers,StorageLevel.MEMORY_ONLY)
-    // 1. Get the Max offset list for each Kafka partitions
+    // **1**. Get the Max offset list for each Kafka partitions
     val partitonOffset_stream = ProcessedOffsetManager.getPartitionOffset(unionStreams, props)
     
     //Start Application Logic
        **Process Stream**
     //End Application Logic
     
-    // 2. Find the Max amongst the list and Persists the Max Offset to ZK
+    // **2**. Find the Max amongst the list and Persists the Max Offset to ZK
     ProcessedOffsetManager.persists(partitonOffset_stream, props)
 
 # Consumer Tuning Options
 
-## Block Size Tuning :
+## Batch Size Tuning :
 
-The Low Level Kafka Consumer consumes messages from Kafka in Rate Limiting way. Default settings can be found in consumer.kafka.KafkaConfig.java class
+This consumer Polls Kafka every **consumer.fillfreqms** and during every Poll , it tries to fetch **max.poll.records** messages. 
 
-You can see following two variables
+Hecne let assume your Batch Duration is 30 seconds, and you have 10 Kafka Partitions. and max.poll.records is 50 , Total messages consumer can fetch is 
+Total = (BatchDuration/FillFrequency) * MaxPollRecords * Number of Kafka Partitions
 
-	public int _fetchSizeBytes = 512 * 1024;
-	public int _fillFreqMs = 200 ;
+e.g. for above example it can fetch 30 *  10 * 50 = 15000 messages every batch.
 	
-This suggests that, Receiver for any given Partition of a Topic will pull 512 KB Block of data at every 200ms.
-With this default settings, let assume your Kafka Topic have 5 partitions, and your Spark Batch Duration is say 10 Seconds, this Consumer will pull
-
-512 KB x ( 10 seconds / 200 ms ) x 5 = 128 MB of data for every Batch.
-
-If you need higher rate, you can increase the _fetchSizeBytes (via **consumer.fetchsizebytes** property) , or if you need less number of Block generated you can increase _fillFreqMs ( via **consumer.fillfreqms** property).
+If you need higher rate, you can increase the **max.poll.records** property , or  you can increase poll frequency using by lowering **consumer.fillfreqms** property.
 
 These two parameter need to be carefully tuned keeping in mind your downstream processing rate and your memory settings.
 
@@ -442,5 +452,5 @@ This will start the Spark Receiver and Fetch Kafka Messages for every partition 
 
 e.g. to Test Consumer provided in the package with your Kafka settings please modify it to point to your Kafka and use below command for spark submit. You may need to change the Spark-Version and Kafka-Version in pom.xml.
 
-./bin/spark-submit --class consumer.kafka.client.SampleConsumer --master spark://x.x.x.x:7077 --executor-memory 1G /<Path_To>/kafka-spark-consumer-1.0.13-jar-with-dependencies.jar
+./bin/spark-submit --class consumer.kafka.client.SampleConsumer --master spark://x.x.x.x:7077 --executor-memory 1G /<Path_To>/kafka-spark-consumer-1.0.14-jar-with-dependencies.jar
 
