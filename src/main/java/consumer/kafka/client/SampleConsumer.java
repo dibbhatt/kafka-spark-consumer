@@ -51,13 +51,17 @@ public class SampleConsumer implements Serializable {
     props.put("zookeeper.port", "2181");
     props.put("kafka.topic", "mytopic");
     props.put("kafka.consumer.id", "kafka-consumer");
-    props.put("zookeeper.consumer.connection", "localhost:2181");
     // Optional Properties
-    props.put("consumer.forcefromstart", "false");
-    props.put("consumer.fetchsizebytes", "1048576");
+    // Optional Properties
+    props.put("consumer.forcefromstart", "true");
+    props.put("max.poll.records", "100");
     props.put("consumer.fillfreqms", "1000");
     props.put("consumer.backpressure.enabled", "true");
-    props.put("consumer.num_fetch_to_buffer", "1");
+    //Kafka properties
+    props.setProperty("bootstrap.servers", "localhost:9093");
+    props.put("security.protocol", "SSL");
+    props.put("ssl.truststore.location","~/kafka-securitykafka.server.truststore.jks");
+    props.put("ssl.truststore.password", "test1234");
 
     SparkConf _sparkConf = new SparkConf();
     JavaStreamingContext jsc = new JavaStreamingContext(_sparkConf, Durations.seconds(30));

@@ -103,7 +103,8 @@ public class ProcessedOffsetManager<T> {
   }
 
   private static void persistProcessedOffsets(Properties props, Map<Integer, Long> partitionOffsetMap) {
-    ZkState state = new ZkState(props.getProperty(Config.ZOOKEEPER_CONSUMER_CONNECTION));
+    String zkPath = getZKPath(props);
+    ZkState state = new ZkState(zkPath);
     for(Map.Entry<Integer, Long> po : partitionOffsetMap.entrySet()) {
       String path = processedPath(po.getKey(), props);
       try{
@@ -116,6 +117,25 @@ public class ProcessedOffsetManager<T> {
       }
     }
     state.close();
+  }
+
+  private static String getZKPath(Properties props) {
+    //ZK Host and Port for Kafka Cluster
+    String zkHost = props.getProperty("zookeeper.hosts");
+    String zkPort = props.getProperty("zookeeper.port");
+    //ZK host:port details for Offset writing
+    String consumerConnection = "";
+    if(props.getProperty("zookeeper.consumer.connection") != null) {
+      consumerConnection = props.getProperty("zookeeper.consumer.connection");
+    } else {
+      String[] zkh = zkHost.split(",");
+      for(String host: zkh) {
+        String hostport = host + ":" + zkPort;
+        consumerConnection = consumerConnection + "," + hostport;
+      }
+      consumerConnection = consumerConnection.substring(consumerConnection.indexOf(',')+1);
+    }
+    return consumerConnection;
   }
 
   public static String processedPath(int partition, Properties props) {

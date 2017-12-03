@@ -79,7 +79,17 @@ public class KafkaConfig implements Serializable {
     //Kafka Topic
     String kafkaTopic = props.getProperty("kafka.topic");
     //ZK host:port details for Offset writing
-    String consumerConnection = props.getProperty("zookeeper.consumer.connection");
+    String consumerConnection = "";
+    if(props.getProperty("zookeeper.consumer.connection") != null) {
+      consumerConnection = props.getProperty("zookeeper.consumer.connection");
+    } else {
+      String[] zkh = zkHost.split(",");
+      for(String host: zkh) {
+        String hostport = host + ":" + zkPort;
+        consumerConnection = consumerConnection + "," + hostport;
+      }
+      consumerConnection = consumerConnection.substring(consumerConnection.indexOf(',')+1);
+    }
     String consumerId = props.getProperty("kafka.consumer.id");
 
     if (props.getProperty("zookeeper.broker.path") != null) {

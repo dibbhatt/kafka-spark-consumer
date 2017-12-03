@@ -160,8 +160,6 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
 	* **zookeeper.port**=2181
 * Kafka Topic to consume
 	* **kafka.topic**=topic-name
-* Consumer ZK quorum details. Used to store the next offset.
-	* **zookeeper.consumer.connection**=host1:2181,host2:2181
 * Kafka Consumer ID. Identifier of the Consumer
 	* **kafka.consumer.id**=consumer-id
 * OPTIONAL - Force From Start . Default Consumer Starts from Latest offset.
@@ -174,6 +172,8 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
 	* **consumer.backpressure.enabled**=true
 * OPTIONAL - This can further control RDD Partitions. Number of Blocks fetched from Kafka to merge before writing to Spark Block Manager. Default is 1
 	* **consumer.num_fetch_to_buffer**=1
+* OPTIONAL - Consumer ZK quorum details. Used to store the next offset.
+	* **zookeeper.consumer.connection**=host1:2181,host2:2181
 
 # Java Example
 
@@ -182,7 +182,6 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
     props.put("zookeeper.port", "2181");
     props.put("kafka.topic", "mytopic");
     props.put("kafka.consumer.id", "kafka-consumer");
-    props.put("zookeeper.consumer.connection", "x.x.x.x:2181");
     // Optional Properties
     props.put("max.poll.records", "250");
     props.put("consumer.fillfreqms", "1000");
@@ -252,7 +251,6 @@ The src/main/java/consumer/kafka/client/SampleConsumer.java is the sample Java c
 	Map("zookeeper.hosts" -> zkhosts,
         "zookeeper.port" -> zkports,
         "kafka.topic" -> topic,
-        "zookeeper.consumer.connection" -> "x.x.x.x:2181",
         "kafka.consumer.id" -> "kafka-consumer",
         //optional properties
         "max.poll.records" -> "250",
@@ -283,8 +281,8 @@ examples/scala/LowLevelKafkaConsumer.scala is a sample scala code on how to use 
 # Kafka Security
 
 latest version of this consumer 1.0.14 supports Kafka Security. One just need to add necessary kafka security properties to pull messages from Secured kafka cluster. e.g.
-
-    props.put("security.protocol", "SASL_SSL");
+    props.put("bootstrap.servers", "localhost:9093");
+    props.put("security.protocol", "SSL");
     props.put("ssl.truststore.location","./truststore");
     props.put("ssl.truststore.password", "pass");
 
