@@ -281,6 +281,7 @@ examples/scala/LowLevelKafkaConsumer.scala is a sample scala code on how to use 
 # Kafka Security
 
 latest version of this consumer 1.0.14 supports Kafka Security. One just need to add necessary kafka security properties to pull messages from Secured kafka cluster. e.g.
+
     props.put("bootstrap.servers", "localhost:9093");
     props.put("security.protocol", "SSL");
     props.put("ssl.truststore.location","./truststore");
