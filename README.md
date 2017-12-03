@@ -183,6 +183,7 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
     props.put("kafka.topic", "mytopic");
     props.put("kafka.consumer.id", "kafka-consumer");
     // Optional Properties
+    props.put("bootstrap.servers", "x.x.x.x:9092");
     props.put("max.poll.records", "250");
     props.put("consumer.fillfreqms", "1000");
 
@@ -253,6 +254,7 @@ The src/main/java/consumer/kafka/client/SampleConsumer.java is the sample Java c
         "kafka.topic" -> topic,
         "kafka.consumer.id" -> "kafka-consumer",
         //optional properties
+		"bootstrap.servers" - > "9092"
         "max.poll.records" -> "250",
         "consumer.fillfreqms" -> "1000"
 
@@ -282,10 +284,10 @@ examples/scala/LowLevelKafkaConsumer.scala is a sample scala code on how to use 
 
 latest version of this consumer 1.0.14 supports Kafka Security. One just need to add necessary kafka security properties to pull messages from Secured kafka cluster. e.g.
 
-    props.put("bootstrap.servers", "localhost:9093");
+    props.put("bootstrap.servers", "x.x.x.x:9093");
     props.put("security.protocol", "SSL");
-    props.put("ssl.truststore.location","./truststore");
-    props.put("ssl.truststore.password", "pass");
+    props.put("ssl.truststore.location","kafka.server.truststore.jks");
+    props.put("ssl.truststore.password", "test1234");
 
 This consumer by default using below properties, which can not be changed. If you want diffrent key/value.deserializer, you can do it either in Spark Job or using the **Custom Message Hanlder** concept mentioned below.
 
