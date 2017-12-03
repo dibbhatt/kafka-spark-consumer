@@ -44,6 +44,8 @@ public class PIDControllerTest {
     Properties props = new Properties();
     props.setProperty("max.poll.records", Integer.toString(fetchSize));
     props.setProperty("kafka.consumer.id", "1");
+    props.put("zookeeper.hosts", "localhost");
+    props.put("zookeeper.port", "2181");
     config = new KafkaConfig(props);
     queueSize = 0;
   }
