@@ -167,7 +167,7 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
 * OPTIONAL - Force From Start . Default Consumer Starts from Latest offset.
 	* **consumer.forcefromstart**=false
 * OPTIONAL - Maximum messages fetched in one Poll. Default 500
-	* **max.poll.records**=1048576
+	* **max.poll.records**=500
 * OPTIONAL - Fill Frequence in MS . Default 1 Second
 	* **consumer.fillfreqms**=1000
 * OPTIONAL - Consumer Back Pressure Support. Default is true
