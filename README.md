@@ -162,17 +162,19 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
 	* **kafka.topic**=topic-name
 * Kafka Consumer ID. Identifier of the Consumer
 	* **kafka.consumer.id**=consumer-id
+* Kafka Bootstrap Servers.
+	* **bootstrap.servers**=x.x.x.x:9092
 * OPTIONAL - Force From Start . Default Consumer Starts from Latest offset.
-	* **consumer.forcefromstart**=false
+	* **consumer.forcefromstart**=true
 * OPTIONAL - Maximum messages fetched in one Poll. Default 500
-	* **max.poll.records**=500
+	* **max.poll.records**=100
 * OPTIONAL - Fill Frequence in MS . Default 1 Second
-	* **consumer.fillfreqms**=1000
+	* **consumer.fillfreqms**=500
 * OPTIONAL - Consumer Back Pressure Support. Default is true
-	* **consumer.backpressure.enabled**=true
+	* **consumer.backpressure.enabled**=false
 * OPTIONAL - This can further control RDD Partitions. Number of Blocks fetched from Kafka to merge before writing to Spark Block Manager. Default is 1
-	* **consumer.num_fetch_to_buffer**=1
-* OPTIONAL - Consumer ZK quorum details. Used to store the next offset.
+	* **consumer.num_fetch_to_buffer**=10
+* OPTIONAL - ZK used for consumer offset commit. It can be different ZK cluster than what used for Kafka. 
 	* **zookeeper.consumer.connection**=host1:2181,host2:2181
 
 # Java Example
@@ -182,8 +184,8 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
     props.put("zookeeper.port", "2181");
     props.put("kafka.topic", "mytopic");
     props.put("kafka.consumer.id", "kafka-consumer");
-    // Optional Properties
     props.put("bootstrap.servers", "x.x.x.x:9092");
+	// Optional Properties
     props.put("max.poll.records", "250");
     props.put("consumer.fillfreqms", "1000");
 
@@ -249,12 +251,12 @@ The src/main/java/consumer/kafka/client/SampleConsumer.java is the sample Java c
     //Specify number of Receivers you need. 
     val numberOfReceivers = 1
     val kafkaProperties: Map[String, String] = 
-	Map("zookeeper.hosts" -> zkhosts,
+    Map("zookeeper.hosts" -> zkhosts,
         "zookeeper.port" -> zkports,
         "kafka.topic" -> topic,
         "kafka.consumer.id" -> "kafka-consumer",
+        "bootstrap.servers" - > "9092"
         //optional properties
-		"bootstrap.servers" - > "9092"
         "max.poll.records" -> "250",
         "consumer.fillfreqms" -> "1000"
 

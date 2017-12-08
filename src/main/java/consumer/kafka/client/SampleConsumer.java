@@ -58,7 +58,7 @@ public class SampleConsumer implements Serializable {
     props.put("consumer.fillfreqms", "1000");
     props.put("consumer.backpressure.enabled", "true");
     //Kafka properties
-    props.setProperty("bootstrap.servers", "localhost:9093");
+    props.put("bootstrap.servers", "localhost:9093");
     props.put("security.protocol", "SSL");
     props.put("ssl.truststore.location","~/kafka-securitykafka.server.truststore.jks");
     props.put("ssl.truststore.password", "test1234");
