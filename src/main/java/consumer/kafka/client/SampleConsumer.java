@@ -19,9 +19,11 @@
 package consumer.kafka.client;
 
 import java.io.Serializable;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Properties;
 
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.VoidFunction;
@@ -74,12 +76,36 @@ public class SampleConsumer implements Serializable {
     //Get the Max offset from each RDD Partitions. Each RDD Partition belongs to One Kafka Partition
     JavaPairDStream<Integer, Iterable<Long>> partitonOffset = ProcessedOffsetManager
         .getPartitionOffset(unionStreams, props);
+    
 
+    //Start Application Logic
     unionStreams.foreachRDD(new VoidFunction<JavaRDD<MessageAndMetadata<byte[]>>>() {
       @Override
       public void call(JavaRDD<MessageAndMetadata<byte[]>> rdd) throws Exception {
-        List<MessageAndMetadata<byte[]>> rddList = rdd.collect();
-        System.out.println(" Number of records in this batch " + rddList.size());
+
+    	rdd.foreachPartition(new VoidFunction<Iterator<MessageAndMetadata<byte[]>>>() {
+			
+			@Override
+			public void call(Iterator<MessageAndMetadata<byte[]>> mmItr) throws Exception {
+				while(mmItr.hasNext()) {
+					MessageAndMetadata<byte[]> mm = mmItr.next();
+					byte[] key = mm.getKey();
+					byte[] value = mm.getPayload();
+					Headers headers = mm.getHeaders();
+					System.out.println("Key :" + new String(key) + " Value :" + new String(value));
+					if(headers != null) {
+						Header[] harry = headers.toArray();
+						for(Header header : harry) {
+							String hkey = header.key();
+							byte[] hvalue = header.value();
+							System.out.println("Header Key :" + hkey + " Header Value :" + new String(hvalue));
+						}
+					}
+					
+				}
+				
+			}
+		});
       }
     });
     //End Application Logic

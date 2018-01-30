@@ -31,6 +31,7 @@ import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.header.Headers;
 import org.apache.spark.streaming.receiver.Receiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -201,6 +202,8 @@ public class PartitionManager implements Serializable {
           long offset = msgAndOffset.offset();
           byte[] key = msgAndOffset.key();
           byte[] payload = msgAndOffset.value();
+          //Get Kafka message headers
+          Headers header = msgAndOffset.headers();
           _lastEnquedOffset = offset;
           _emittedToOffset = offset + 1;
           //Process only when fetched messages are having higher offset than last committed offset
@@ -209,7 +212,7 @@ public class PartitionManager implements Serializable {
               MessageAndMetadata<?> mm = null;
               try {
                 //Perform Message Handling if configured.
-                mm = _handler.handle(_lastEnquedOffset, _partition, _topic, _consumerId,  payload);
+                mm = _handler.handle(_lastEnquedOffset, _partition, _topic, _consumerId,  payload, header);
                 if (key != null) {
                   mm.setKey(key);
                 }
