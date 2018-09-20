@@ -95,7 +95,7 @@ public class KafkaSparkConsumer<E extends Serializable> implements Runnable, Ser
         } else {
             managers.get(0).next();
         }
-      } catch (FailedFetchException fe) {
+      } catch (FailedFetchException | OutOfRangeException fe) {
           fe.printStackTrace();
           LOG.warn("Fetch failed. Refresing Coordinator..", fe);
           _coordinator.refresh();

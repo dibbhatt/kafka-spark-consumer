@@ -51,7 +51,7 @@ public class SampleConsumer implements Serializable {
     Properties props = new Properties();
     props.put("zookeeper.hosts", "localhost");
     props.put("zookeeper.port", "2181");
-    props.put("kafka.topic", "mytopic");
+    props.put("kafka.topic", "test");
     props.put("kafka.consumer.id", "kafka-consumer");
     // Optional Properties
     // Optional Properties
@@ -60,7 +60,7 @@ public class SampleConsumer implements Serializable {
     props.put("consumer.fillfreqms", "1000");
     props.put("consumer.backpressure.enabled", "true");
     //Kafka properties
-    props.put("bootstrap.servers", "localhost:9093");
+    props.put("bootstrap.servers", "localhost:9092");
     props.put("security.protocol", "SSL");
     props.put("ssl.truststore.location","~/kafka-securitykafka.server.truststore.jks");
     props.put("ssl.truststore.password", "test1234");
@@ -92,13 +92,17 @@ public class SampleConsumer implements Serializable {
 					byte[] key = mm.getKey();
 					byte[] value = mm.getPayload();
 					Headers headers = mm.getHeaders();
-					System.out.println("Key :" + new String(key) + " Value :" + new String(value));
+					if(key != null)
+						System.out.println(" key :" + new String(key));
+					if(value != null)
+						System.out.println(" Value :" + new String(value));
 					if(headers != null) {
 						Header[] harry = headers.toArray();
 						for(Header header : harry) {
 							String hkey = header.key();
 							byte[] hvalue = header.value();
-							System.out.println("Header Key :" + hkey + " Header Value :" + new String(hvalue));
+							if(hvalue != null && hkey != null)
+								System.out.println("Header Key :" + hkey + " Header Value :" + new String(hvalue));
 						}
 					}
 					
