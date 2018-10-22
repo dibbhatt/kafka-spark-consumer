@@ -137,11 +137,11 @@ e.g. Below example to include dependency for Spark 2.2.0 and Kafka 0.11.0
         </exclusion>
       </exclusions>
     </dependency>
-	<dependency>
-	    <groupId>org.apache.kafka</groupId>
-	    <artifactId>kafka-clients</artifactId>
-	    <version>${kafka.version}</version>
-	</dependency>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafka.version}</version>
+    </dependency>
     <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
