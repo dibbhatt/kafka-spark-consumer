@@ -22,8 +22,6 @@ import java.io.Serializable;
 import java.util.Iterator;
 import java.util.Properties;
 
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.VoidFunction;
@@ -91,20 +89,10 @@ public class SampleConsumer implements Serializable {
 					MessageAndMetadata<byte[]> mm = mmItr.next();
 					byte[] key = mm.getKey();
 					byte[] value = mm.getPayload();
-					Headers headers = mm.getHeaders();
 					if(key != null)
 						System.out.println(" key :" + new String(key));
 					if(value != null)
 						System.out.println(" Value :" + new String(value));
-					if(headers != null) {
-						Header[] harry = headers.toArray();
-						for(Header header : harry) {
-							String hkey = header.key();
-							byte[] hvalue = header.value();
-							if(hvalue != null && hkey != null)
-								System.out.println("Header Key :" + hkey + " Header Value :" + new String(hvalue));
-						}
-					}
 					
 				}
 				

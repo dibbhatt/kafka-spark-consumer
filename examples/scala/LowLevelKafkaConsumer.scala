@@ -37,11 +37,11 @@ object LowLevelKafkaConsumer {
         "zookeeper.consumer.connection" -> "localhost:2181",
         "kafka.consumer.id" -> "kafka-consumer",
         //optional properties
-        "consumer.forcefromstart" -> "true",
+        "consumer.forcefromstart" -> "false",
         "consumer.backpressure.enabled" -> "true",
-        "consumer.fetchsizebytes" -> "1048576",
+        "max.poll.records" -> "100",
         "consumer.fillfreqms" -> "1000",
-        "consumer.num_fetch_to_buffer" -> "1")
+        "consumer.num_fetch_to_buffer" -> "5")
 
     val props = new java.util.Properties()
     kafkaProperties foreach { case (key,value) => props.put(key, value)}

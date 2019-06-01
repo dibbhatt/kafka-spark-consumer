@@ -20,8 +20,6 @@ package consumer.kafka;
 
 import java.io.Serializable;
 
-import org.apache.kafka.common.header.Headers;
-
 @SuppressWarnings("serial")
 public class MessageAndMetadata<E> implements Serializable {
 
@@ -31,18 +29,8 @@ public class MessageAndMetadata<E> implements Serializable {
   private Partition partition;
   private String topic;
   private String consumer;
-  private Headers headers;
-  
 
-  public Headers getHeaders() {
-	return headers;
-  }
-
-  public void setHeaders(Headers headers) {
-	this.headers = headers;
-  }
-
-public byte[] getKey() {
+  public byte[] getKey() {
     return key;
   }
 
