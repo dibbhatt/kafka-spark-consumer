@@ -20,8 +20,6 @@ package consumer.kafka;
 
 import java.io.Serializable;
 
-import org.apache.kafka.common.header.Headers;
-
 @SuppressWarnings("serial")
 public abstract class KafkaMessageHandler<E> implements Cloneable, Serializable {
 
@@ -29,7 +27,7 @@ public abstract class KafkaMessageHandler<E> implements Cloneable, Serializable 
         // do nothing for default implementation
     }
 
-    public MessageAndMetadata<E> handle(long offset, Partition partition, String topic, String consumer, byte[] payload, Headers headers) throws Exception {
+    public MessageAndMetadata<E> handle(long offset, Partition partition, String topic, String consumer, byte[] payload) throws Exception {
         E msg = process(payload);
         MessageAndMetadata<E> m = new MessageAndMetadata<>();
         m.setConsumer(consumer);
@@ -37,7 +35,6 @@ public abstract class KafkaMessageHandler<E> implements Cloneable, Serializable 
         m.setPartition(partition);
         m.setPayload(msg);
         m.setTopic(topic);
-        m.setHeaders(headers);
         return m;
     }
 

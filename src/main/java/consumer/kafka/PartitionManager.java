@@ -203,7 +203,6 @@ public class PartitionManager implements Serializable {
           byte[] key = msgAndOffset.key();
           byte[] payload = msgAndOffset.value();
           //Get Kafka message headers
-          Headers header = msgAndOffset.headers();
           _lastEnquedOffset = offset;
           _emittedToOffset = offset + 1;
           //Process only when fetched messages are having higher offset than last committed offset
@@ -212,7 +211,7 @@ public class PartitionManager implements Serializable {
               MessageAndMetadata<?> mm = null;
               try {
                 //Perform Message Handling if configured.
-                mm = _handler.handle(_lastEnquedOffset, _partition, _topic, _consumerId,  payload, header);
+                mm = _handler.handle(_lastEnquedOffset, _partition, _topic, _consumerId,  payload);
                 if (key != null) {
                   mm.setKey(key);
                 }

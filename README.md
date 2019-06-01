@@ -17,7 +17,7 @@ Please see Java or Scala code example on how to use this Low Level Consumer
 
 ## Kafka-Spark-Consumer Version Compatibility
 
-**Version 1.0.15** : Spark verison 2.x and above. Kafka version 0.10 and above. **Support for Kafka Security** . **Used New Kafka Consumer API**
+**Version 1.0.16** : Spark verison 2.x and above. Kafka version 0.10 and above. **Support for Kafka Security** . **Used New Kafka Consumer API**
 
 **Version 1.0.13** : Spark version 2.x and above. All Kafka version ( 0.8.x, 0.9.x, 0.10.x, 0.11.x). No support for Kafka Security. **Used Low Level SimpleConsumer API**
 
@@ -58,7 +58,7 @@ And Use Below Dependency in your Maven
 		<dependency>
 				<groupId>dibbhatt</groupId>
 				<artifactId>kafka-spark-consumer</artifactId>
-				<version>1.0.15</version>
+				<version>1.0.16</version>
 		</dependency>
 
 # Accessing from Spark Packages
@@ -68,18 +68,18 @@ And Use Below Dependency in your Maven
 Include this package in your Spark Applications using:
 
 * spark-shell, pyspark, or spark-submit
-	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.15
+	$SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:1.0.16
 * sbt
 
 If you use the sbt-spark-package plugin, in your sbt build file, add:
 
-	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.15"
+	spDependencies += "dibbhatt/kafka-spark-consumer:1.0.16"
 
 Otherwise,
 
 	resolvers += "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven"
 			  
-	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.15"
+	libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "1.0.16"
 
 
 * Maven
@@ -91,7 +91,7 @@ In your pom.xml, add:
 	  <dependency>
 		<groupId>dibbhatt</groupId>
 		<artifactId>kafka-spark-consumer</artifactId>
-		<version>1.0.15</version>
+		<version>1.0.16</version>
 	  </dependency>
 	</dependencies>
 	<repositories>
@@ -111,7 +111,7 @@ e.g. Below example to include dependency for Spark 2.2.0 and Kafka 0.11.0
 ```xml
 <properties>
   <spark.version>2.2.0</spark.version>
-  <kafka.version>0.11.0.0</kafka.version>
+  <kafka.version>1.1.0</kafka.version>
 </properties>
 
 <dependencies>
@@ -241,7 +241,7 @@ The src/main/java/consumer/kafka/client/SampleConsumer.java is the sample Java c
     val sc = new SparkContext(conf)
 
     //Might want to uncomment and add the jars if you are running on standalone mode.
-    sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.15-jar-with-dependencies.jar")
+    sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-1.0.16-jar-with-dependencies.jar")
     val ssc = new StreamingContext(sc, Seconds(10))
 
     val topic = "mytopic"
@@ -284,7 +284,7 @@ examples/scala/LowLevelKafkaConsumer.scala is a sample scala code on how to use 
 
 # Kafka Security
 
-latest version of this consumer 1.0.15 supports Kafka Security. One just need to add necessary kafka security properties to pull messages from Secured kafka cluster. e.g.
+latest version of this consumer 1.0.16 supports Kafka Security. One just need to add necessary kafka security properties to pull messages from Secured kafka cluster. e.g.
 
     props.put("bootstrap.servers", "x.x.x.x:9093");
     props.put("security.protocol", "SSL");
@@ -455,5 +455,5 @@ This will start the Spark Receiver and Fetch Kafka Messages for every partition 
 
 e.g. to Test Consumer provided in the package with your Kafka settings please modify it to point to your Kafka and use below command for spark submit. You may need to change the Spark-Version and Kafka-Version in pom.xml.
 
-./bin/spark-submit --class consumer.kafka.client.SampleConsumer --master spark://x.x.x.x:7077 --executor-memory 1G /<Path_To>/kafka-spark-consumer-1.0.15-jar-with-dependencies.jar
+./bin/spark-submit --class consumer.kafka.client.SampleConsumer --master spark://x.x.x.x:7077 --executor-memory 1G /<Path_To>/kafka-spark-consumer-1.0.16-jar-with-dependencies.jar
 
