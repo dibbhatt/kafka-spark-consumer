@@ -81,8 +81,9 @@ public class KafkaRangeReceiver<E extends Serializable> extends Receiver<Message
         _messageHandler.init();
         maxRestartAttempts = kafkaConfig._maxRestartAttempts;
         restartAttempts = restartAttempts + 1;
+        //Creating zkState for all Partition to share
+        ZkState zkState = new ZkState(kafkaConfig);
         for (Integer partitionId : _partitionSet) {
-          ZkState zkState = new ZkState(kafkaConfig);
           _kConsumer = new KafkaSparkConsumer(kafkaConfig, zkState, this, (KafkaMessageHandler) _messageHandler.clone());
           _kConsumer.open(partitionId);
           Thread.UncaughtExceptionHandler eh =

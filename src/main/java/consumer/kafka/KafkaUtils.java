@@ -32,8 +32,10 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.InvalidOffsetException;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetOutOfRangeException;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,10 +73,10 @@ public class KafkaUtils {
     ConsumerRecords<byte[], byte[]> records;
     try {
       records = consumer.poll(config._fillFreqMs / 2);
-    } catch(OffsetOutOfRangeException oore) {
-      throw new OutOfRangeException(oore.getMessage());
+    } catch(InvalidOffsetException ex) {
+      throw new OutOfRangeException(ex.getMessage());
     } catch (Exception e) {
-      if (e instanceof ConnectException
+      if (e instanceof KafkaException || e instanceof ConnectException
         || e instanceof SocketTimeoutException || e instanceof IOException
         || e instanceof UnresolvedAddressException) {
 

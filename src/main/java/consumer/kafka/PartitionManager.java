@@ -266,6 +266,7 @@ public class PartitionManager implements Serializable {
         //This can happen if new Leader is behind the previous leader when elected during a Kafka broker failure.
         if(_emittedToOffset >= latestOffset) {
           _emittedToOffset = latestOffset;
+          _lastComittedOffset = latestOffset;
           LOG.warn("Offset reset to LatestTime {} for Topic {}  partition {}" , _emittedToOffset, topic, _partition.partition);
         } else if (_emittedToOffset <= earliestOffset) {
           //This can happen if messages are deleted from Kafka due to Kafka's log retention period and 
@@ -332,7 +333,6 @@ public class PartitionManager implements Serializable {
         triggerBlockManagerWrite();
         _connections.unregister(_partition.host, _partition.partition);
         _connections.clear();
-        _state.close();
         LOG.info("Closed connection for {}", _partition);
       } catch (Exception ex) {
         ex.printStackTrace();

@@ -78,9 +78,6 @@ public class KafkaSparkConsumer<E extends Serializable> implements Runnable, Ser
 
     @Override
     public void close() {
-      if (_state != null) {
-          _state.close();
-      }
       if (_connections != null) {
           _connections.clear();
       }
