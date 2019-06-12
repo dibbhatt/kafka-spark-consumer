@@ -123,7 +123,7 @@ public class PartitionManager implements Serializable {
               .put("pattern", "static")
               .put("timestamp", Long.toString(System.currentTimeMillis()))
               .build();
-        _state.writeJSON(zkIdsPath("ids") + cordinate , data);
+        _state.writeJSON(zkCordPath("ids") + cordinate , data);
       } catch(Exception ne) {
         LOG.error("Node already exists" , ne);
       }
@@ -317,6 +317,11 @@ public class PartitionManager implements Serializable {
               + "/" + _stateConf.get(Config.KAFKA_CONSUMER_ID) + "/" + type+ "/"
               + _stateConf.get(Config.KAFKA_TOPIC) + "/";
     }
+    
+    private String zkCordPath(String type) {
+        return _stateConf.get(Config.ZOOKEEPER_CONSUMER_PATH)
+                + "/" + _stateConf.get(Config.KAFKA_CONSUMER_ID) + "/" + type+ "/";
+      }
 
     public long lastCommittedOffset() {
       return _lastComittedOffset;
