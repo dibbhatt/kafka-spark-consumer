@@ -103,7 +103,7 @@ public class SampleConsumer implements Serializable {
     //End Application Logic
 
     //Persists the Max Offset of given Kafka Partition to ZK
-    ProcessedOffsetManager.persists(partitonOffset, props);
+    ProcessedOffsetManager.persists(jsc.ssc(), partitonOffset, props);
 
     try {
       jsc.start();
