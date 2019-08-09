@@ -28,7 +28,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.VoidFunction;
-import org.apache.spark.streaming.StreamingContext;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaPairDStream;
 import org.apache.spark.streaming.dstream.DStream;
@@ -48,47 +47,49 @@ public class ProcessedOffsetManager<T> {
   }
 
   @SuppressWarnings("deprecation")
-  public static void persists(StreamingContext context, JavaPairDStream<Integer, Iterable<Long>> partitonOffset, Properties props) {
-	if(!context.sc().isStopped()){
-	    partitonOffset.foreachRDD(new VoidFunction<JavaPairRDD<Integer,Iterable<Long>>>() {
-	        @Override
-	        public void call(JavaPairRDD<Integer, Iterable<Long>> po) throws Exception {
-	          List<Tuple2<Integer, Iterable<Long>>> poList = po.collect();
-	          doPersists(poList, props);
-	        }
-	      });
-	} else {
-		LOG.error("Spark Context is stopped. Skipping offset commits");
-	}
+  public static void persists(JavaPairDStream<Integer, Iterable<Long>> partitonOffset, Properties props) {
+    partitonOffset.foreachRDD(new VoidFunction<JavaPairRDD<Integer,Iterable<Long>>>() {
+      @Override
+      public void call(JavaPairRDD<Integer, Iterable<Long>> po) throws Exception {
+        List<Tuple2<Integer, Iterable<Long>>> poList = po.collect();
+        doPersists(poList, props);
+      }
+    });
   }
+
+  // added to avoid skipped message due to exception thrown during processing RDD
+  @SuppressWarnings("deprecation")
+  public static <T> void persistsPartition(JavaRDD<MessageAndMetadata<T>> rdd, Properties props) throws Exception {
+        JavaPairRDD<Integer,Long> partitionOffsetRdd = rdd.mapPartitionsToPair(new PartitionOffsetPair<>());
+        JavaPairRDD<Integer, Iterable<Long>> partitonOffset = partitionOffsetRdd.groupByKey(1);
+        List<Tuple2<Integer, Iterable<Long>>> poList = partitonOffset.collect();
+        doPersists(poList, props);
+  }
+
 
   public static <T> DStream<Tuple2<Integer, Iterable<Long>>>  getPartitionOffset(
       DStream<MessageAndMetadata<T>> unionStreams, Properties props) {
-    ClassTag<MessageAndMetadata<T>> messageMetaClassTag = 
+    ClassTag<MessageAndMetadata<T>> messageMetaClassTag =
         ScalaUtil.<T>getMessageAndMetadataClassTag();
-    JavaDStream<MessageAndMetadata<T>> javaDStream = 
+    JavaDStream<MessageAndMetadata<T>> javaDStream =
         new JavaDStream<MessageAndMetadata<T>>(unionStreams, messageMetaClassTag);
     JavaPairDStream<Integer, Iterable<Long>> partitonOffset = getPartitionOffset(javaDStream, props);
     return partitonOffset.dstream();
   }
 
   @SuppressWarnings("deprecation")
-  public static void persists(StreamingContext context, DStream<Tuple2<Integer, Iterable<Long>>> partitonOffset, Properties props) {
-	if(!context.sc().isStopped()){
-	    ClassTag<Tuple2<Integer, Iterable<Long>>> tuple2ClassTag = 
-	        ScalaUtil.<Integer, Iterable<Long>>getTuple2ClassTag();
-	    JavaDStream<Tuple2<Integer, Iterable<Long>>> jpartitonOffset = 
-	        new JavaDStream<Tuple2<Integer, Iterable<Long>>>(partitonOffset, tuple2ClassTag);
-	    jpartitonOffset.foreachRDD(new VoidFunction<JavaRDD<Tuple2<Integer, Iterable<Long>>>>() {
-	      @Override
-	      public void call(JavaRDD<Tuple2<Integer, Iterable<Long>>> po) throws Exception {
-	        List<Tuple2<Integer, Iterable<Long>>> poList = po.collect();
-	        doPersists(poList, props);
-	      }
-	    });  
-	}else {
-		LOG.error("Spark Context is stopped. Skipping offset commits");
-	}
+  public static void persists(DStream<Tuple2<Integer, Iterable<Long>>> partitonOffset, Properties props) {
+    ClassTag<Tuple2<Integer, Iterable<Long>>> tuple2ClassTag =
+        ScalaUtil.<Integer, Iterable<Long>>getTuple2ClassTag();
+    JavaDStream<Tuple2<Integer, Iterable<Long>>> jpartitonOffset =
+        new JavaDStream<Tuple2<Integer, Iterable<Long>>>(partitonOffset, tuple2ClassTag);
+    jpartitonOffset.foreachRDD(new VoidFunction<JavaRDD<Tuple2<Integer, Iterable<Long>>>>() {
+      @Override
+      public void call(JavaRDD<Tuple2<Integer, Iterable<Long>>> po) throws Exception {
+        List<Tuple2<Integer, Iterable<Long>>> poList = po.collect();
+        doPersists(poList, props);
+      }
+    });
   }
 
   private static void doPersists(List<Tuple2<Integer, Iterable<Long>>> poList, Properties props) {
