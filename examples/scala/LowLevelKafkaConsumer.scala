@@ -46,15 +46,16 @@ object LowLevelKafkaConsumer {
     val props = new java.util.Properties()
     kafkaProperties foreach { case (key,value) => props.put(key, value)}
 
-    val tmp_stream = ReceiverLauncher.launch(ssc, props, numberOfReceivers,StorageLevel.MEMORY_ONLY)
+    val unionStreamsm = ReceiverLauncher.launch(ssc, props, numberOfReceivers,StorageLevel.MEMORY_ONLY)
     
-    tmp_stream.foreachRDD(rdd => {
-        //Start Application Logic
+    unionStreams.foreachRDD(rdd => {
+        //Start Application Logic e.g. rdd.foreachPartition
         println("\n\nNumber of records in this batch : " + rdd.count())
         //End Application Logic
 
         //Persists the Max Offset of given Kafka Partition to ZK
         ProcessedOffsetManager.persistsPartition(rdd, props)
+
     } )
 
     ssc.start()

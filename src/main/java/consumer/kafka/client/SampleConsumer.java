@@ -28,7 +28,6 @@ import org.apache.spark.api.java.function.VoidFunction;
 import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.Durations;
 import org.apache.spark.streaming.api.java.JavaDStream;
-import org.apache.spark.streaming.api.java.JavaPairDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
 
 import consumer.kafka.MessageAndMetadata;
@@ -71,38 +70,31 @@ public class SampleConsumer implements Serializable {
     JavaDStream<MessageAndMetadata<byte[]>> unionStreams = ReceiverLauncher.launch(
         jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
 
-
-    //Start Application Logic
     unionStreams.foreachRDD(new VoidFunction<JavaRDD<MessageAndMetadata<byte[]>>>() {
       @Override
       public void call(JavaRDD<MessageAndMetadata<byte[]>> rdd) throws Exception {
 
-    	rdd.foreachPartition(new VoidFunction<Iterator<MessageAndMetadata<byte[]>>>() {
-
-			@Override
-			public void call(Iterator<MessageAndMetadata<byte[]>> mmItr) throws Exception {
-				while(mmItr.hasNext()) {
-					MessageAndMetadata<byte[]> mm = mmItr.next();
-					byte[] key = mm.getKey();
-					byte[] value = mm.getPayload();
-					if(key != null)
-						System.out.println(" key :" + new String(key));
-					if(value != null)
-						System.out.println(" Value :" + new String(value));
-
-				}
-
-			}
-		});
-
-    ProcessedOffsetManager.persistsPartition(rdd, props);
-
-
+        System.out.println("Number of records in this batch : " + rdd.count());
+        //Start Application Logic
+        rdd.foreachPartition(new VoidFunction<Iterator<MessageAndMetadata<byte[]>>>() {
+            @Override
+            public void call(Iterator<MessageAndMetadata<byte[]>> mmItr) throws Exception {
+                while(mmItr.hasNext()) {
+                    MessageAndMetadata<byte[]> mm = mmItr.next();
+                    byte[] key = mm.getKey();
+                    byte[] value = mm.getPayload();
+                    if(key != null)
+                        System.out.println(" key :" + new String(key));
+                    if(value != null)
+                        System.out.println(" Value :" + new String(value));
+                }
+            }
+        });
+        //End Application Logic
+        //commit offset
+        ProcessedOffsetManager.persistsPartition(rdd, props);
       }
     });
-    //End Application Logic
-
-    //Persists the Max Offset of given Kafka Partition to ZK
 
     try {
       jsc.start();
