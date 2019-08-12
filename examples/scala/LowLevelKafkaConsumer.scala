@@ -27,10 +27,10 @@ object LowLevelKafkaConsumer {
     val zkhosts = "localhost"
     val zkports = "2181"
 
-    //Specify number of Receivers you need. 
+    //Specify number of Receivers you need.
     val numberOfReceivers = 1
 
-    val kafkaProperties: Map[String, String] = 
+    val kafkaProperties: Map[String, String] =
 	Map("zookeeper.hosts" -> zkhosts,
         "zookeeper.port" -> zkports,
         "kafka.topic" -> topic,
@@ -47,17 +47,16 @@ object LowLevelKafkaConsumer {
     kafkaProperties foreach { case (key,value) => props.put(key, value)}
 
     val tmp_stream = ReceiverLauncher.launch(ssc, props, numberOfReceivers,StorageLevel.MEMORY_ONLY)
-    //Get the Max offset from each RDD Partitions. Each RDD Partition belongs to One Kafka Partition
-    val partitonOffset_stream = ProcessedOffsetManager.getPartitionOffset(tmp_stream, props)
-
-    //Start Application Logic
+    
     tmp_stream.foreachRDD(rdd => {
+        //Start Application Logic
         println("\n\nNumber of records in this batch : " + rdd.count())
-    } )
-    //End Application Logic
+        //End Application Logic
 
-    //Persists the Max Offset of given Kafka Partition to ZK
-    ProcessedOffsetManager.persists(partitonOffset_stream, props)
+        //Persists the Max Offset of given Kafka Partition to ZK
+        ProcessedOffsetManager.persistsPartition(rdd, props)
+    } )
+
     ssc.start()
     ssc.awaitTermination()
 
@@ -65,4 +64,3 @@ object LowLevelKafkaConsumer {
   }
 
 }
-

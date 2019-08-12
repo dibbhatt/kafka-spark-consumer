@@ -71,10 +71,6 @@ public class SampleConsumer implements Serializable {
     JavaDStream<MessageAndMetadata<byte[]>> unionStreams = ReceiverLauncher.launch(
         jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
 
-    //Get the Max offset from each RDD Partitions. Each RDD Partition belongs to One Kafka Partition
-    JavaPairDStream<Integer, Iterable<Long>> partitonOffset = ProcessedOffsetManager
-        .getPartitionOffset(unionStreams, props);
-    
 
     //Start Application Logic
     unionStreams.foreachRDD(new VoidFunction<JavaRDD<MessageAndMetadata<byte[]>>>() {
@@ -82,7 +78,7 @@ public class SampleConsumer implements Serializable {
       public void call(JavaRDD<MessageAndMetadata<byte[]>> rdd) throws Exception {
 
     	rdd.foreachPartition(new VoidFunction<Iterator<MessageAndMetadata<byte[]>>>() {
-			
+
 			@Override
 			public void call(Iterator<MessageAndMetadata<byte[]>> mmItr) throws Exception {
 				while(mmItr.hasNext()) {
@@ -93,17 +89,20 @@ public class SampleConsumer implements Serializable {
 						System.out.println(" key :" + new String(key));
 					if(value != null)
 						System.out.println(" Value :" + new String(value));
-					
+
 				}
-				
+
 			}
 		});
+
+    ProcessedOffsetManager.persistsPartition(rdd, props);
+
+
       }
     });
     //End Application Logic
 
     //Persists the Max Offset of given Kafka Partition to ZK
-    ProcessedOffsetManager.persists(jsc.ssc(), partitonOffset, props);
 
     try {
       jsc.start();
