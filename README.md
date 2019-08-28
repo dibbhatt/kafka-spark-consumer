@@ -17,9 +17,9 @@ Please see Java or Scala code example on how to use this Low Level Consumer
 
 ## Kafka-Spark-Consumer Version Compatibility
 
-**Version 2.0.0** : Spark verison 2.x and above. Kafka version 0.10 and above. **Support for Kafka Security** . **Used New Kafka Consumer API**
+**Version 2.1.0** : Spark verison 2.x and above. Kafka version 0.10 and above. **Support for handling Multi Topic** .
 
-**Version 1.0.13** : Spark version 2.x and above. All Kafka version ( 0.8.x, 0.9.x, 0.10.x, 0.11.x, 1.x). No support for Kafka Security. **Used Low Level SimpleConsumer API**
+**Version 2.0.0** : Spark verison 2.x and above. Kafka version 0.10 and above. **Support for Kafka Security** . **Used New Kafka Consumer API**
 
 **Version 1.0.9** : Spark Version earlier to 2.0 ( i.e. 1.6 and prior). All Kafka version ( 0.8.x, 0.9.x, 0.10.x, 0.11.x). No support for Kafka Security. **Used Low Level SimpleConsumer API**
 
@@ -27,6 +27,7 @@ Please see Java or Scala code example on how to use this Low Level Consumer
 ## Salient Feature of Kafka-Spark-Consumer
 
 - User latest Kafka Consumer API. Support for **Kafka Security**
+- Support for consuming from **multiple topics**
 - **Zookeeper** for storing the offset for each Kafka partition, which will help to recover in case of failure
 - Spark streaming job using this Consumer **does not require WAL** for recovery from Driver or Executor failures. As this consumer has capability to store the processed offset after every Batch interval, in case of any failure, Consumer can start from the correct offset from the last **Processed** offset.
 - This Consumer has implemented **PID (Proportional , Integral , Derivative )**  based Rate Controller for controlling Back-Pressure.
@@ -58,7 +59,7 @@ And Use Below Dependency in your Maven
         <dependency>
                 <groupId>dibbhatt</groupId>
                 <artifactId>kafka-spark-consumer</artifactId>
-                <version>2.0.0</version>
+                <version>2.1.0</version>
         </dependency>
 
 # Accessing from Spark Packages
@@ -68,18 +69,18 @@ And Use Below Dependency in your Maven
 Include this package in your Spark Applications using:
 
 * spark-shell, pyspark, or spark-submit
-    $SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:2.0.0
+    $SPARK_HOME/bin/spark-shell --packages dibbhatt:kafka-spark-consumer:2.1.0
 * sbt
 
 If you use the sbt-spark-package plugin, in your sbt build file, add:
 
-    spDependencies += "dibbhatt/kafka-spark-consumer:2.0.0"
+    spDependencies += "dibbhatt/kafka-spark-consumer:2.1.0"
 
 Otherwise,
 
     resolvers += "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven"
               
-    libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "2.0.0"
+    libraryDependencies += "dibbhatt" % "kafka-spark-consumer" % "2.1.0"
 
 
 * Maven
@@ -91,7 +92,7 @@ In your pom.xml, add:
       <dependency>
         <groupId>dibbhatt</groupId>
         <artifactId>kafka-spark-consumer</artifactId>
-        <version>2.0.0</version>
+        <version>2.1.0</version>
       </dependency>
     </dependencies>
     <repositories>
@@ -158,8 +159,8 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
     * **zookeeper.hosts**=host1,host2
 * Kafka ZK Port
     * **zookeeper.port**=2181
-* Kafka Topic to consume
-    * **kafka.topic**=topic-name
+* Kafka Topic to consume (comma separated list of Kafka Topics for Multi topic fetch)
+    * **kafka.topic**=topicA
 * Kafka Consumer ID. Identifier of the Consumer
     * **kafka.consumer.id**=consumer-id
 * Kafka Bootstrap Servers.
@@ -182,7 +183,7 @@ These are the Consumer Properties need to be used in your Driver Code. ( See Jav
     Properties props = new Properties();
     props.put("zookeeper.hosts", "x.x.x.x");
     props.put("zookeeper.port", "2181");
-    props.put("kafka.topic", "mytopic");
+    props.put("kafka.topic", "topicA");
     props.put("kafka.consumer.id", "kafka-consumer");
     props.put("bootstrap.servers", "x.x.x.x:9092");
     // Optional Properties
@@ -248,10 +249,10 @@ The src/main/java/consumer/kafka/client/SampleConsumer.java is the sample Java c
     val sc = new SparkContext(conf)
 
     //Might want to uncomment and add the jars if you are running on standalone mode.
-    sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-2.0.0-jar-with-dependencies.jar")
+    sc.addJar("/home/kafka-spark-consumer/target/kafka-spark-consumer-2.1.0-jar-with-dependencies.jar")
     val ssc = new StreamingContext(sc, Seconds(10))
 
-    val topic = "mytopic"
+    val topic = "topicA"
     val zkhosts = "x.x.x.x"
     val zkports = "2181"
 
@@ -296,9 +297,112 @@ Complete example is available here :
     
 examples/scala/LowLevelKafkaConsumer.scala is a sample scala code on how to use this utility.
 
+# Handling Multi Topic
+
+Add the multiple topic in **kafka.topic** property
+
+    props.put("kafka.topic", "topicA,topicB,topicC");
+
+Sample Multi Topic Fetch example. Code is exactly same as Single topic Fetch.
+
+    Properties props = new Properties();
+    props.put("zookeeper.hosts", "zkhost");
+    props.put("zookeeper.port", "2181");
+    props.put("kafka.topic", "topicA,topicB,topicC");
+    props.put("kafka.consumer.id", "kafka-consumer");
+    // Optional Properties
+    props.put("zookeeper.broker.path", "/brokers");
+    props.put("zookeeper.consumer.path", "/consumers");
+    props.put("consumer.forcefromstart", "false");
+    props.put("max.poll.records", "10");
+    props.put("consumer.fillfreqms", "500");
+    props.put("consumer.backpressure.enabled", "true");
+    //Kafka properties
+    props.put("bootstrap.servers", "x.x.x.x:9092");
+
+    SparkConf _sparkConf = new SparkConf();
+    JavaStreamingContext jsc = new JavaStreamingContext(_sparkConf, Durations.seconds(30));
+    //Specify number of Receivers you need.
+    int numberOfReceivers = 6;
+
+    JavaDStream<MessageAndMetadata<byte[]>> unionStreams = ReceiverLauncher.launch(
+        jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
+
+    unionStreams.foreachRDD(new VoidFunction<JavaRDD<MessageAndMetadata<byte[]>>>() {
+      @Override
+      public void call(JavaRDD<MessageAndMetadata<byte[]>> rdd) throws Exception {
+        //Start Application Logic
+        rdd.foreachPartition(new VoidFunction<Iterator<MessageAndMetadata<byte[]>>>() {
+            @Override
+            public void call(Iterator<MessageAndMetadata<byte[]>> mmItr) throws Exception {
+                int countTopicA = 0;
+                int countTopicB = 0;
+                int countTopicC = 0;
+                while(mmItr.hasNext()) {
+                    MessageAndMetadata<byte[]> mm = mmItr.next();
+                    if(mm.getTopic().equals("topicA")) {
+                        countTopicA++;
+                    }
+                    else if (mm.getTopic().equals("topicB")) {
+                        countTopicB++;
+                    }
+                    else if (mm.getTopic().equals("topicC")) {
+                        countTopicC++;
+                    }
+                }
+                System.out.println("topicA count " + countTopicA);
+                System.out.println("topicB count " + countTopicB);
+                System.out.println("topicC count " + countTopicC);
+            }
+        });
+        System.out.println("RDD count " + rdd.count());
+        //End Application Logic
+        //commit offset
+        System.out.println("Commiting Offset");
+        ProcessedOffsetManager.persistsPartition(rdd, props);
+      }
+    });
+
+# Offset Commit Mechanism
+
+if you see client/SampleConsumer.java or examples/scala/LowLevelKafkaConsumer.scala , you need to add couple of lines (marked as **1**) in you Driver Code
+  
+For Java
+
+    //Get the stream
+    JavaDStream<MessageAndMetadata<byte[]>> unionStreams = ReceiverLauncher.launch(
+        jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
+    
+    unionStreams.foreachRDD(new VoidFunction<JavaRDD<MessageAndMetadata<byte[]>>>() {
+      @Override
+      public void call(JavaRDD<MessageAndMetadata<byte[]>> rdd) throws Exception {
+          //Start Application Logic
+          System.out.println("Number of records in this batch : " + rdd.count());
+          //rdd.foreachPartition { ..}
+          //End Application Logic
+
+          //**1** commit offset
+          ProcessedOffsetManager.persistsPartition(rdd, props);
+      }
+    });
+
+For Scala
+
+    //Get the Stream 
+    val unionStreams = ReceiverLauncher.launch(ssc, props, numberOfReceivers,StorageLevel.MEMORY_ONLY)
+    
+    unionStreams.foreachRDD(rdd => {
+        //Start Application Logic e.g. rdd.foreachPartition {..}
+         println("\n\nNumber of records in this batch : " + rdd.count())
+        //End Application Logic
+
+        //**1** Commit offset
+        ProcessedOffsetManager.persistsPartition(rdd, props)
+    } )
+    
 # Kafka Security
 
-latest version of this consumer 2.0.0 supports Kafka Security. One just need to add necessary kafka security properties to pull messages from Secured kafka cluster. e.g.
+this consumer supports Kafka Security. One just need to add necessary kafka security properties to pull messages from Secured kafka cluster. e.g.
 
     props.put("bootstrap.servers", "x.x.x.x:9093");
     props.put("security.protocol", "SSL");
@@ -337,45 +441,8 @@ e.g. , if RDD Partition 4, 8 and 12 are generated by Receiver Thread X for Kafka
 
 This Consumer perform very simple Map Reduce logic to get the highest offset for every Kafka partitions belongs to a given RDD for a Batch. This <Partition, Offset> tuple is written back to ZK as already processed offset after the Batch completes.  
 
-This require following few lines to be added in Spark Driver Code to avail this feature. 
+This require few lines to be added in Spark Driver Code to avail this feature. Please refer Offset Commit Mechanism section.
 
-
-## How to enable Consumer Recovery from Driver Crash
-
-if you see client/SampleConsumer.java or examples/scala/LowLevelKafkaConsumer.scala , you need to add couple of lines (marked as **1**) in you Driver Code
-  
-For Java
-  
-    //Get the stream
-    JavaDStream<MessageAndMetadata<byte[]>> unionStreams = ReceiverLauncher.launch(
-        jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
-    
-    unionStreams.foreachRDD(new VoidFunction<JavaRDD<MessageAndMetadata<byte[]>>>() {
-      @Override
-      public void call(JavaRDD<MessageAndMetadata<byte[]>> rdd) throws Exception {
-          //Start Application Logic
-          System.out.println("Number of records in this batch : " + rdd.count());
-          //rdd.foreachPartition..
-          //End Application Logic
-
-          //**1** commit offset
-          ProcessedOffsetManager.persistsPartition(rdd, props);
-      }
-    });
-
-For Scala
-    
-    //Get the Stream 
-    val unionStreams = ReceiverLauncher.launch(ssc, props, numberOfReceivers,StorageLevel.MEMORY_ONLY)
-    
-    unionStreams.foreachRDD(rdd => {
-        //Start Application Logic e.g. rdd.foreachPartition
-         println("\n\nNumber of records in this batch : " + rdd.count())
-        //End Application Logic
-
-        //**1** Commit offset
-        ProcessedOffsetManager.persistsPartition(rdd, props)
-    } )
 
 # Consumer Tuning Options
 
@@ -433,7 +500,7 @@ Default MessageHandler is **IdentityMessageHandler** which is just pass through 
 E.g. one can implement MyMessageHandler which will transform consumed byte[] from Kafka to some type E
 
    **java example**
-   
+
     public class MyMessageHandler extends KafkaMessageHandler<E> {
         @Override
         protected E process(byte[] payload) {
@@ -447,7 +514,7 @@ E.g. one can implement MyMessageHandler which will transform consumed byte[] fro
     JavaDStream<MessageAndMetadata<T>> unionStreams = ReceiverLauncher.launch(
         jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY(), myHandler);
 
-    **scala example**
+   **scala example**
     
     import consumer.kafka.KafkaMessageHandler
 
@@ -492,4 +559,4 @@ This will start the Spark Receiver and Fetch Kafka Messages for every partition 
 
 e.g. to Test Consumer provided in the package with your Kafka settings please modify it to point to your Kafka and use below command for spark submit. You may need to change the Spark-Version and Kafka-Version in pom.xml.
 
-./bin/spark-submit --class consumer.kafka.client.SampleConsumer --master spark://x.x.x.x:7077 --executor-memory 1G /<Path_To>/kafka-spark-consumer-2.0.0-jar-with-dependencies.jar
+./bin/spark-submit --class consumer.kafka.client.SampleConsumer --master spark://x.x.x.x:7077 --executor-memory 1G /<Path_To>/kafka-spark-consumer-2.1.0-jar-with-dependencies.jar

@@ -34,28 +34,29 @@ import scala.Tuple2;
 /**
  * Extracts the kafka-paritition-number and largest-offset-read-for-that-partition from the kafka-receiver output
  */
-public class PartitionOffsetPair<E> implements PairFlatMapFunction<Iterator<MessageAndMetadata<E>>, Integer, Long> {
+@SuppressWarnings("serial")
+public class PartitionOffsetPair<E> implements PairFlatMapFunction<Iterator<MessageAndMetadata<E>>, String, Long> {
     private static final Logger LOG = LoggerFactory.getLogger(PartitionOffsetPair.class);
 
     @Override
-    public Iterator<Tuple2<Integer, Long>> call(Iterator<MessageAndMetadata<E>> it) throws Exception {
+    public Iterator<Tuple2<String, Long>> call(Iterator<MessageAndMetadata<E>> it) throws Exception {
         MessageAndMetadata<E> mmeta = null;
-        List<Tuple2<Integer, Long>> kafkaPartitionToOffsetList = new LinkedList<>();
-        Map<Integer, Long> offsetMap = new HashMap<>();
+        List<Tuple2<String, Long>> kafkaPartitionToOffsetList = new LinkedList<>();
+        Map<String, Long> offsetMap = new HashMap<>();
         while (it.hasNext()) {
             mmeta = it.next();
             if (mmeta != null) {
-              Long offset = offsetMap.get(mmeta.getPartition().partition);
+              Long offset = offsetMap.get(mmeta.getTopic() + ":" + mmeta.getPartition().partition);
               if(offset == null) {
-                offsetMap.put(mmeta.getPartition().partition, mmeta.getOffset());
+                offsetMap.put(mmeta.getTopic() + ":" + mmeta.getPartition().partition, mmeta.getOffset());
               } else {
                 if(mmeta.getOffset() > offset) {
-                  offsetMap.put(mmeta.getPartition().partition, mmeta.getOffset());
+                  offsetMap.put(mmeta.getTopic() + ":" + mmeta.getPartition().partition, mmeta.getOffset());
                 }
               }
            }
         }
-        for(Map.Entry<Integer, Long> entry : offsetMap.entrySet()) {
+        for(Map.Entry<String, Long> entry : offsetMap.entrySet()) {
           kafkaPartitionToOffsetList.add(new Tuple2<>(entry.getKey(), entry.getValue()));
         }
         return kafkaPartitionToOffsetList.iterator();

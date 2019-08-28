@@ -39,19 +39,19 @@ public class ProcessedOffsetManager<T> {
 
   private static final Log LOG = LogFactory.getLog(ProcessedOffsetManager.class);
 
-  public static <T> JavaPairDStream<Integer, Iterable<Long>> getPartitionOffset(
+  public static <T> JavaPairDStream<String, Iterable<Long>> getPartitionOffset(
       JavaDStream<MessageAndMetadata<T>> unionStreams, Properties props) {
-    JavaPairDStream<Integer, Long> partitonOffsetStream = unionStreams.mapPartitionsToPair(new PartitionOffsetPair<>());
-    JavaPairDStream<Integer, Iterable<Long>> partitonOffset = partitonOffsetStream.groupByKey(1);
+    JavaPairDStream<String, Long> partitonOffsetStream = unionStreams.mapPartitionsToPair(new PartitionOffsetPair<>());
+    JavaPairDStream<String, Iterable<Long>> partitonOffset = partitonOffsetStream.groupByKey(1);
     return partitonOffset;
   }
 
   @SuppressWarnings("deprecation")
-  public static void persists(JavaPairDStream<Integer, Iterable<Long>> partitonOffset, Properties props) {
-    partitonOffset.foreachRDD(new VoidFunction<JavaPairRDD<Integer,Iterable<Long>>>() {
+  public static void persists(JavaPairDStream<String, Iterable<Long>> partitonOffset, Properties props) {
+    partitonOffset.foreachRDD(new VoidFunction<JavaPairRDD<String,Iterable<Long>>>() {
       @Override
-      public void call(JavaPairRDD<Integer, Iterable<Long>> po) throws Exception {
-        List<Tuple2<Integer, Iterable<Long>>> poList = po.collect();
+      public void call(JavaPairRDD<String, Iterable<Long>> po) throws Exception {
+        List<Tuple2<String, Iterable<Long>>> poList = po.collect();
         doPersists(poList, props);
       }
     });
@@ -60,44 +60,43 @@ public class ProcessedOffsetManager<T> {
   // added to avoid skipped message due to exception thrown during processing RDD
   @SuppressWarnings("deprecation")
   public static <T> void persistsPartition(JavaRDD<MessageAndMetadata<T>> rdd, Properties props) throws Exception {
-        JavaPairRDD<Integer,Long> partitionOffsetRdd = rdd.mapPartitionsToPair(new PartitionOffsetPair<>());
-        JavaPairRDD<Integer, Iterable<Long>> partitonOffset = partitionOffsetRdd.groupByKey(1);
-        List<Tuple2<Integer, Iterable<Long>>> poList = partitonOffset.collect();
+        JavaPairRDD<String,Long> partitionOffsetRdd = rdd.mapPartitionsToPair(new PartitionOffsetPair<>());
+        JavaPairRDD<String, Iterable<Long>> partitonOffset = partitionOffsetRdd.groupByKey(1);
+        List<Tuple2<String, Iterable<Long>>> poList = partitonOffset.collect();
         doPersists(poList, props);
   }
 
 
-  public static <T> DStream<Tuple2<Integer, Iterable<Long>>>  getPartitionOffset(
+  public static <T> DStream<Tuple2<String, Iterable<Long>>>  getPartitionOffset(
       DStream<MessageAndMetadata<T>> unionStreams, Properties props) {
     ClassTag<MessageAndMetadata<T>> messageMetaClassTag =
         ScalaUtil.<T>getMessageAndMetadataClassTag();
     JavaDStream<MessageAndMetadata<T>> javaDStream =
         new JavaDStream<MessageAndMetadata<T>>(unionStreams, messageMetaClassTag);
-    JavaPairDStream<Integer, Iterable<Long>> partitonOffset = getPartitionOffset(javaDStream, props);
+    JavaPairDStream<String, Iterable<Long>> partitonOffset = getPartitionOffset(javaDStream, props);
     return partitonOffset.dstream();
   }
 
   @SuppressWarnings("deprecation")
-  public static void persists(DStream<Tuple2<Integer, Iterable<Long>>> partitonOffset, Properties props) {
-    ClassTag<Tuple2<Integer, Iterable<Long>>> tuple2ClassTag =
-        ScalaUtil.<Integer, Iterable<Long>>getTuple2ClassTag();
-    JavaDStream<Tuple2<Integer, Iterable<Long>>> jpartitonOffset =
-        new JavaDStream<Tuple2<Integer, Iterable<Long>>>(partitonOffset, tuple2ClassTag);
-    jpartitonOffset.foreachRDD(new VoidFunction<JavaRDD<Tuple2<Integer, Iterable<Long>>>>() {
+  public static void persists(DStream<Tuple2<String, Iterable<Long>>> partitonOffset, Properties props) {
+    ClassTag<Tuple2<String, Iterable<Long>>> tuple2ClassTag =
+        ScalaUtil.<String, Iterable<Long>>getTuple2ClassTag();
+    JavaDStream<Tuple2<String, Iterable<Long>>> jpartitonOffset =
+        new JavaDStream<Tuple2<String, Iterable<Long>>>(partitonOffset, tuple2ClassTag);
+    jpartitonOffset.foreachRDD(new VoidFunction<JavaRDD<Tuple2<String, Iterable<Long>>>>() {
       @Override
-      public void call(JavaRDD<Tuple2<Integer, Iterable<Long>>> po) throws Exception {
-        List<Tuple2<Integer, Iterable<Long>>> poList = po.collect();
+      public void call(JavaRDD<Tuple2<String, Iterable<Long>>> po) throws Exception {
+        List<Tuple2<String, Iterable<Long>>> poList = po.collect();
         doPersists(poList, props);
       }
     });
   }
 
-  private static void doPersists(List<Tuple2<Integer, Iterable<Long>>> poList, Properties props) {
-    Map<Integer, Long> partitionOffsetMap = new HashMap<Integer, Long>();
-    for(Tuple2<Integer, Iterable<Long>> tuple : poList) {
-      int partition = tuple._1();
+  private static void doPersists(List<Tuple2<String, Iterable<Long>>> poList, Properties props) {
+    Map<String, Long> partitionOffsetMap = new HashMap<String, Long>();
+    for(Tuple2<String, Iterable<Long>> tuple : poList) {
       Long offset = getMaximum(tuple._2());
-      partitionOffsetMap.put(partition, offset);
+      partitionOffsetMap.put(tuple._1(), offset);
     }
     persistProcessedOffsets(props, partitionOffsetMap);
   }
@@ -112,11 +111,12 @@ public class ProcessedOffsetManager<T> {
     return max;
   }
 
-  private static void persistProcessedOffsets(Properties props, Map<Integer, Long> partitionOffsetMap) {
+  private static void persistProcessedOffsets(Properties props, Map<String, Long> partitionOffsetMap) {
     String zkPath = getZKPath(props);
     ZkState state = new ZkState(zkPath);
-    for(Map.Entry<Integer, Long> po : partitionOffsetMap.entrySet()) {
-      String path = processedPath(po.getKey(), props);
+    for(Map.Entry<String, Long> po : partitionOffsetMap.entrySet()) {
+      String[] tp = po.getKey().split(":");
+      String path = processedPath(tp[0], Integer.parseInt(tp[1]), props);
       try{
         state.writeBytes(path, po.getValue().toString().getBytes());
         LOG.info("Wrote processed offset " + po.getValue() + " for Parittion " + po.getKey());
@@ -148,7 +148,7 @@ public class ProcessedOffsetManager<T> {
     return consumerConnection;
   }
 
-  public static String processedPath(int partition, Properties props) {
+  public static String processedPath(String topic, int partition, Properties props) {
     String consumerZkPath = "/consumers";
     if (props.getProperty("zookeeper.consumer.path") != null) {
       consumerZkPath = props.getProperty("zookeeper.consumer.path");
@@ -156,7 +156,7 @@ public class ProcessedOffsetManager<T> {
     return consumerZkPath +  "/"
       + props.getProperty(Config.KAFKA_CONSUMER_ID)
       + "/offsets/"
-      + props.getProperty(Config.KAFKA_TOPIC) + "/"
+      + topic + "/"
       + partition;
   }
 }
