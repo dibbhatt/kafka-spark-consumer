@@ -21,7 +21,6 @@ package consumer.kafka.client;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.Set;
 
 import org.apache.spark.storage.StorageLevel;
@@ -30,8 +29,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import consumer.kafka.KafkaConfig;
-import consumer.kafka.KafkaSparkConsumer;
 import consumer.kafka.KafkaMessageHandler;
+import consumer.kafka.KafkaSparkConsumer;
 import consumer.kafka.MessageAndMetadata;
 import consumer.kafka.ZkState;
 
@@ -39,7 +38,7 @@ import consumer.kafka.ZkState;
 public class KafkaRangeReceiver<E extends Serializable> extends Receiver<MessageAndMetadata<E>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaRangeReceiver.class);
-    private final Properties _props;
+    private KafkaConfig kafkaConfig;
     private Set<Integer> _partitionSet;
     private KafkaSparkConsumer _kConsumer;
     private transient Thread _consumerThread;
@@ -48,19 +47,19 @@ public class KafkaRangeReceiver<E extends Serializable> extends Receiver<Message
     private int restartAttempts;
     private KafkaMessageHandler<E> _messageHandler;
 
-    public KafkaRangeReceiver(Properties props,
+    public KafkaRangeReceiver(KafkaConfig config,
                               Set<Integer> partitionSet,
                               KafkaMessageHandler messageHandler) {
-        this(props, partitionSet, StorageLevel.MEMORY_ONLY(), messageHandler);
+        this(config, partitionSet, StorageLevel.MEMORY_ONLY(), messageHandler);
     }
 
     public KafkaRangeReceiver(
-            Properties props,
+    		KafkaConfig config,
             Set<Integer> partitionSet,
             StorageLevel storageLevel,
             KafkaMessageHandler<E> messageHandler) {
       super(storageLevel);
-      this._props = props;
+      this.kafkaConfig = config;
       _partitionSet = partitionSet;
       _messageHandler = messageHandler;
     }
@@ -77,7 +76,6 @@ public class KafkaRangeReceiver<E extends Serializable> extends Receiver<Message
     public void start() throws CloneNotSupportedException {
         // Start the thread that receives data over a connection
         _threadList.clear();
-        KafkaConfig kafkaConfig = new KafkaConfig(_props);
         _messageHandler.init();
         maxRestartAttempts = kafkaConfig._maxRestartAttempts;
         restartAttempts = restartAttempts + 1;

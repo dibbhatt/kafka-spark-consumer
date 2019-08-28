@@ -29,6 +29,8 @@ import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.Durations;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import consumer.kafka.MessageAndMetadata;
 import consumer.kafka.ProcessedOffsetManager;
@@ -36,6 +38,9 @@ import consumer.kafka.ReceiverLauncher;
 
 @SuppressWarnings("serial")
 public class SampleConsumer implements Serializable {
+
+    private static final Logger LOG = LoggerFactory
+            .getLogger(SampleConsumer.class);
 
   public void start() throws InstantiationException, IllegalAccessException,
       ClassNotFoundException {
@@ -46,18 +51,22 @@ public class SampleConsumer implements Serializable {
   private void run() {
 
     Properties props = new Properties();
-    props.put("zookeeper.hosts", "localhost");
+    props.put("zookeeper.hosts", "zkhost");
     props.put("zookeeper.port", "2181");
-    props.put("kafka.topic", "test");
+    props.put("kafka.topic", "topicA,topicB,topicC");
     props.put("kafka.consumer.id", "kafka-consumer");
     // Optional Properties
-    // Optional Properties
-    props.put("consumer.forcefromstart", "true");
-    props.put("max.poll.records", "100");
-    props.put("consumer.fillfreqms", "1000");
+    props.put("zookeeper.broker.path", "/brokers");
+    props.put("zookeeper.consumer.path", "/consumers");
+    props.put("consumer.forcefromstart", "false");
+    props.put("max.poll.records", "10");
+    props.put("consumer.fillfreqms", "500");
     props.put("consumer.backpressure.enabled", "true");
     //Kafka properties
-    props.put("bootstrap.servers", "localhost:9092");
+    props.put("bootstrap.servers", "kafkahost-1:6667,"
+            + "kafkahost-2:6667,"
+            + "kafkahost-3:6667,"
+            + "kafkahost-4:6667");
     props.put("security.protocol", "SSL");
     props.put("ssl.truststore.location","~/kafka-securitykafka.server.truststore.jks");
     props.put("ssl.truststore.password", "test1234");
@@ -65,7 +74,7 @@ public class SampleConsumer implements Serializable {
     SparkConf _sparkConf = new SparkConf();
     JavaStreamingContext jsc = new JavaStreamingContext(_sparkConf, Durations.seconds(30));
     // Specify number of Receivers you need.
-    int numberOfReceivers = 1;
+    int numberOfReceivers = 6;
 
     JavaDStream<MessageAndMetadata<byte[]>> unionStreams = ReceiverLauncher.launch(
         jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
@@ -73,25 +82,34 @@ public class SampleConsumer implements Serializable {
     unionStreams.foreachRDD(new VoidFunction<JavaRDD<MessageAndMetadata<byte[]>>>() {
       @Override
       public void call(JavaRDD<MessageAndMetadata<byte[]>> rdd) throws Exception {
-
-        System.out.println("Number of records in this batch : " + rdd.count());
         //Start Application Logic
         rdd.foreachPartition(new VoidFunction<Iterator<MessageAndMetadata<byte[]>>>() {
             @Override
             public void call(Iterator<MessageAndMetadata<byte[]>> mmItr) throws Exception {
+                int countTopicA = 0;
+                int countTopicB = 0;
+                int countTopicC = 0;
                 while(mmItr.hasNext()) {
                     MessageAndMetadata<byte[]> mm = mmItr.next();
-                    byte[] key = mm.getKey();
-                    byte[] value = mm.getPayload();
-                    if(key != null)
-                        System.out.println(" key :" + new String(key));
-                    if(value != null)
-                        System.out.println(" Value :" + new String(value));
+                    if(mm.getTopic().equals("topicA")) {
+                        countTopicA++;
+                    }
+                    else if (mm.getTopic().equals("topicB")) {
+                        countTopicB++;
+                    }
+                    else if (mm.getTopic().equals("topicC")) {
+                        countTopicC++;
+                    }
                 }
+                System.out.println("topicA count " + countTopicA);
+                System.out.println("topicB count " + countTopicB);
+                System.out.println("topicC count " + countTopicC);
             }
         });
+        System.out.println("RDD count " + rdd.count());
         //End Application Logic
         //commit offset
+        System.out.println("Commiting Offset");
         ProcessedOffsetManager.persistsPartition(rdd, props);
       }
     });

@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.StreamingContext;
@@ -70,31 +69,68 @@ public class ReceiverLauncher implements Serializable {
     }
 
     private static <E> JavaDStream<MessageAndMetadata<E>> createStream(
-            JavaStreamingContext jsc, Properties pros, int numberOfReceivers, StorageLevel storageLevel,
+            JavaStreamingContext jsc, Properties props, int numberOfReceivers, StorageLevel storageLevel,
             KafkaMessageHandler<E> messageHandler) {
 
-        AtomicBoolean terminateOnFailure = new AtomicBoolean(false);
         List<JavaDStream<MessageAndMetadata<E>>> streamsList =
                 new ArrayList<>();
         JavaDStream<MessageAndMetadata<E>> unionStreams;
-        int numberOfPartition;
-        KafkaConfig kafkaConfig = new KafkaConfig(pros);
-        ZkState zkState = new ZkState(kafkaConfig);
-        String numberOfPartitionStr =
-                (String) pros.getProperty(Config.KAFKA_PARTITIONS_NUMBER);
-        if (numberOfPartitionStr != null) {
-            numberOfPartition = Integer.parseInt(numberOfPartitionStr);
-        } else {
-          _zkPath = (String) kafkaConfig._stateConf.get(Config.ZOOKEEPER_BROKER_PATH);
-          String _topic = (String) kafkaConfig._stateConf.get(Config.KAFKA_TOPIC);
-          numberOfPartition = getNumPartitions(zkState, _topic);
+        KafkaConfig globalConfig = new KafkaConfig(props);
+        _zkPath = (String) globalConfig.brokerZkPath;
+        String[] topicList = props.getProperty(Config.KAFKA_TOPIC).split(",");
+        int totalPartitions = 0;
+        Map<String, KafkaConfig> topicConfigMap = new HashMap<>();
+
+        for(String topic : topicList) {
+            Properties property = new Properties();
+            property.putAll(props);
+            property.replace(Config.KAFKA_TOPIC, topic.trim());
+            KafkaConfig kafkaConfig = new KafkaConfig(property);
+            ZkState zkState = new ZkState(kafkaConfig);
+            int numberOfPartition = getNumPartitions(zkState, topic.trim());
+            totalPartitions = totalPartitions + numberOfPartition;
+            zkState.close();
+            topicConfigMap.put(topic + ":" + numberOfPartition, kafkaConfig);
         }
+
+        for(Map.Entry<String, KafkaConfig> entry : topicConfigMap.entrySet()) {
+            String[] tp = entry.getKey().split(":");
+            int partitions = Integer.parseInt(tp[1]);
+            KafkaConfig config = entry.getValue();
+            int assignedReceivers = (int)Math.round(((partitions/(double)totalPartitions) * numberOfReceivers));
+            if(assignedReceivers == 0)
+                assignedReceivers = 1;
+
+            assignReceiversToPartitions(assignedReceivers,partitions,streamsList, config, storageLevel, messageHandler, jsc);
+        }
+
+        
+        // Union all the streams if there is more than 1 stream
+        if (streamsList.size() > 1) {
+            unionStreams =
+                    jsc.union(
+                            streamsList.get(0), streamsList.subList(1, streamsList.size()));
+        } else {
+            // Otherwise, just use the 1 stream
+            unionStreams = streamsList.get(0);
+        }
+        final long batchDuration = jsc.ssc().graph().batchDuration().milliseconds();
+        ReceiverStreamListener listener = new ReceiverStreamListener(globalConfig, batchDuration);
+        jsc.addStreamingListener(listener);
+        //Reset the fetch size
+        Utils.setFetchRate(globalConfig, globalConfig._pollRecords);
+        return unionStreams;
+    }
+
+    private static <E> void assignReceiversToPartitions(int numberOfReceivers, 
+            int numberOfPartition, List<JavaDStream<MessageAndMetadata<E>>> streamsList, 
+            KafkaConfig config, StorageLevel storageLevel, KafkaMessageHandler<E> messageHandler, JavaStreamingContext jsc ) {
 
         // Create as many Receiver as Partition
         if (numberOfReceivers >= numberOfPartition) {
             for (int i = 0; i < numberOfPartition; i++) {
                 streamsList.add(jsc.receiverStream(new KafkaReceiver(
-                        pros, i, storageLevel, messageHandler)));
+                        config, i, storageLevel, messageHandler)));
             }
         } else {
             // create Range Receivers..
@@ -112,29 +148,10 @@ public class ReceiverLauncher implements Serializable {
                 rMap.put(j, pSet);
             }
             for (int i = 0; i < numberOfReceivers; i++) {
-                streamsList.add(jsc.receiverStream(new KafkaRangeReceiver(pros, rMap
+                streamsList.add(jsc.receiverStream(new KafkaRangeReceiver(config, rMap
                         .get(i), storageLevel, messageHandler)));
             }
         }
-
-        // Union all the streams if there is more than 1 stream
-        if (streamsList.size() > 1) {
-            unionStreams =
-                    jsc.union(
-                            streamsList.get(0), streamsList.subList(1, streamsList.size()));
-        } else {
-            // Otherwise, just use the 1 stream
-            unionStreams = streamsList.get(0);
-        }
-
-        final long batchDuration = jsc.ssc().graph().batchDuration().milliseconds();
-        ReceiverStreamListener listener = new ReceiverStreamListener(kafkaConfig, batchDuration);
-
-        jsc.addStreamingListener(listener);
-        //Reset the fetch size
-        Utils.setFetchRate(kafkaConfig, kafkaConfig._pollRecords);
-        zkState.close();
-        return unionStreams;
     }
 
     private static int getNumPartitions(ZkState zkState, String topic) {

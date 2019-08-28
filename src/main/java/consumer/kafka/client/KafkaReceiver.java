@@ -19,7 +19,6 @@
 package consumer.kafka.client;
 
 import java.io.Serializable;
-import java.util.Properties;
 
 import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.receiver.Receiver;
@@ -27,8 +26,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import consumer.kafka.KafkaConfig;
-import consumer.kafka.KafkaSparkConsumer;
 import consumer.kafka.KafkaMessageHandler;
+import consumer.kafka.KafkaSparkConsumer;
 import consumer.kafka.MessageAndMetadata;
 import consumer.kafka.ZkState;
 
@@ -37,7 +36,7 @@ import consumer.kafka.ZkState;
 public class KafkaReceiver<E extends Serializable> extends Receiver<MessageAndMetadata<E>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaReceiver.class);
-    private final Properties _props;
+    private KafkaConfig kafkaConfig;
     private int _partitionId;
     private KafkaSparkConsumer _kConsumer;
     private transient Thread _consumerThread;
@@ -45,19 +44,19 @@ public class KafkaReceiver<E extends Serializable> extends Receiver<MessageAndMe
     private int restartAttempts;
     private KafkaMessageHandler _messageHandler;
 
-    public KafkaReceiver(Properties props,
+    public KafkaReceiver(KafkaConfig config,
                          int partitionId,
                          KafkaMessageHandler messageHandler) {
-        this(props, partitionId, StorageLevel.MEMORY_ONLY(), messageHandler);
+        this(config, partitionId, StorageLevel.MEMORY_ONLY(), messageHandler);
     }
 
     public KafkaReceiver(
-            Properties props,
+    		KafkaConfig config,
             int partitionId,
             StorageLevel storageLevel,
             KafkaMessageHandler messageHandler) {
         super(storageLevel);
-        this._props = props;
+        this.kafkaConfig = config;
         this._partitionId = partitionId;
         this._messageHandler = messageHandler;
     }
@@ -69,7 +68,6 @@ public class KafkaReceiver<E extends Serializable> extends Receiver<MessageAndMe
 
     public void start() {
         // Start the thread that receives data over a connection
-        KafkaConfig kafkaConfig = new KafkaConfig(_props);
         _messageHandler.init();
         maxRestartAttempts = kafkaConfig._maxRestartAttempts;
         restartAttempts = restartAttempts + 1;
