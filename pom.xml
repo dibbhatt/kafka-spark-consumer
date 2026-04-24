@@ -24,7 +24,7 @@
 
   <properties>
     <spark.version>2.4.4</spark.version>
-    <kafka.version>1.1.0</kafka.version>
+    <kafka.version>3.9.2</kafka.version>
   </properties>
 
   <dependencies>
